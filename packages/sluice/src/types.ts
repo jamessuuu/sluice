@@ -1,4 +1,5 @@
 import type { Json } from "./json.js";
+import type { RetryPolicy } from "./retry.js";
 
 // ── errors ────────────────────────────────────────────────────────────────────
 
@@ -109,10 +110,14 @@ export interface EffectSpec {
   namespace?: string;
   /** Hashed canonically; mismatch on the same key ⇒ E_KEY_CONFLICT (SPEC F9). */
   fingerprint?: Json;
-  /** Default 30_000. Heartbeat at leaseMs/3 (lands in M2). */
+  /** Default 30_000. Heartbeat at leaseMs/3. */
   leaseMs?: number;
   /** Whole-run deadline incl. retries. Default 60_000. */
   deadlineMs?: number;
+  /** Per-effect override of the instance retry policy (SPEC §5). */
+  retry?: Partial<RetryPolicy>;
+  /** Enables the breaker and keys the retry budget for this effect. */
+  circuitKey?: string;
   onIndeterminate?: "fail" | "reclaim" | "gate";
   retentionMs?: number;
 }
@@ -172,6 +177,50 @@ export interface AuditInput {
   attempt?: number;
   actor?: string;
   data?: Record<string, Json>;
+}
+
+// ── circuit breaker ───────────────────────────────────────────────────────────
+
+export type CircuitState = "closed" | "open" | "half_open";
+
+/**
+ * One row of `sluice_circuit`, PK `key` = `namespace:circuitKey` (SPEC §3).
+ * `consecutiveOpens` is a spec addition: §3 stores only the jittered open_ms,
+ * which cannot honestly drive "openMs doubling to maxOpenMs" — doubling a
+ * jittered value compounds the jitter. Postgres (M6) packs it into
+ * window_json; additive-only migration policy allows it.
+ */
+export interface CircuitRecord {
+  key: string;
+  state: CircuitState;
+  /** CAS token — writeCircuit refuses a stale version. */
+  version: number;
+  /** Rolling outcome window, newest last: 1 = failure, 0 = success. */
+  window: number[];
+  openedAt: number | null;
+  /** The jittered open interval currently in force. */
+  openMs: number | null;
+  consecutiveOpens: number;
+  halfOpenOwner: string | null;
+  halfOpenExpiresAt: number | null;
+  updatedAt: number;
+}
+
+export interface CircuitPolicy {
+  /** Rolling window size. Default 20 (SPEC §5). */
+  windowSize: number;
+  /** Opens at ≥ this failure ratio. Default 0.5. */
+  failureThreshold: number;
+  /** ... with at least this many samples. Default 5. */
+  minSamples: number;
+  /** Base open interval, ±20% jitter, doubling per consecutive open. Default 30_000. */
+  openMs: number;
+  /** Doubling ceiling. Default 300_000. */
+  maxOpenMs: number;
+  /** A half-open probe owner that exceeds this is presumed dead. Default 30_000. */
+  probeTtlMs: number;
+  /** In-process read-through cache TTL. Default 1_000 (SPEC §5). */
+  cacheTtlMs: number;
 }
 
 // ── clock ─────────────────────────────────────────────────────────────────────
@@ -279,6 +328,19 @@ export interface SluiceStore {
   }): Promise<{ ok: boolean }>;
 
   readEffect(namespace: string, key: string): Promise<EffectRecord | null>;
+
+  readCircuit(key: string): Promise<CircuitRecord | null>;
+
+  /**
+   * Compare-and-set write. `expectedVersion` null means "create iff absent".
+   * On success the stored record (with the incremented version) is returned;
+   * on a version conflict `ok:false` with the current record. This CAS is
+   * what makes half-open admit exactly one probe across instances (SPEC §5).
+   */
+  writeCircuit(
+    record: Omit<CircuitRecord, "version">,
+    expectedVersion: number | null
+  ): Promise<{ ok: boolean; record: CircuitRecord | null }>;
 
   appendEvents(
     events: Omit<AuditEvent, "id" | "seq" | "prevHash" | "hash">[]

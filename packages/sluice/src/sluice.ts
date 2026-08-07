@@ -1,4 +1,12 @@
+import { CircuitBreakers, DEFAULT_CIRCUIT_POLICY, type Admission } from "./circuit.js";
 import { canonicalJson, type Json } from "./json.js";
+import {
+  backoffDelayMs,
+  DEFAULT_RETRY_POLICY,
+  retryAfterHint,
+  RetryBudget,
+  type RetryPolicy,
+} from "./retry.js";
 import { sha256Hex } from "./sha256.js";
 import {
   Indeterminate,
@@ -6,6 +14,8 @@ import {
   systemClock,
   type AuditEvent,
   type AuditInput,
+  type CircuitPolicy,
+  type CircuitRecord,
   type ClaimResult,
   type Classification,
   type ClassifyFn,
@@ -14,6 +24,7 @@ import {
   type EffectOutcome,
   type EffectRecord,
   type EffectSpec,
+  type SluiceErrorCode,
   type SluiceStore,
   type StoredError,
 } from "./types.js";
@@ -34,6 +45,10 @@ export interface SluiceOptions {
   random?: () => number;
   /** Classify errors thrown by effect functions (SPEC §5). Default: `failed`. */
   classify?: ClassifyFn;
+  /** Instance-wide retry policy; per-effect `spec.retry` overrides fields. */
+  retry?: Partial<RetryPolicy>;
+  /** Circuit breaker policy, or `false` to disable the breaker entirely. */
+  circuit?: Partial<CircuitPolicy> | false;
   retentionMs?: number;
   maxResultBytes?: number;
   audit?: { sink?: (e: AuditEvent) => void };
@@ -68,6 +83,19 @@ export function createSluice(options: SluiceOptions): Sluice {
   const maxResultBytes = options.maxResultBytes ?? DEFAULT_MAX_RESULT_BYTES;
   const userClassify = options.classify;
   const sink = options.audit?.sink;
+  const baseRetryPolicy: RetryPolicy = { ...DEFAULT_RETRY_POLICY, ...options.retry };
+  const breakers =
+    options.circuit === false
+      ? null
+      : new CircuitBreakers(
+          store,
+          { ...DEFAULT_CIRCUIT_POLICY, ...options.circuit },
+          clock,
+          random,
+          owner,
+          (e) => emit(e)
+        );
+  const budget = new RetryBudget();
 
   async function emit(input: AuditInput): Promise<AuditEvent> {
     let events: AuditEvent[];
@@ -200,6 +228,23 @@ export function createSluice(options: SluiceOptions): Sluice {
     const startedAt = clock.now();
     const deadlineAt = startedAt + deadlineMs;
 
+    // Circuit admission comes BEFORE the claim: a granted claim cannot be
+    // released, and completing it as failed would poison the key. An open
+    // circuit blocks execution but never blocks replay of a recorded outcome.
+    let probe = false;
+    if (breakers !== null && spec.circuitKey !== undefined) {
+      let admission: Admission;
+      try {
+        admission = await breakers.admit(ns, spec.circuitKey);
+      } catch (cause) {
+        throw wrapStoreError(cause, "circuit read failed — the effect was not executed");
+      }
+      if (!admission.admitted) {
+        return settleWithoutExecution<T>(spec, ns, fingerprint, onIndeterminate, admission.record);
+      }
+      probe = admission.probe;
+    }
+
     const claimInput = {
       namespace: ns,
       key: spec.key,
@@ -226,7 +271,7 @@ export function createSluice(options: SluiceOptions): Sluice {
       const claim = await claimGuarded(false);
 
       if (claim.outcome === "claimed") {
-        return execute<T>(spec, fn, claim.record, { ns, leaseMs, deadlineAt });
+        return execute<T>(spec, fn, claim.record, { ns, leaseMs, deadlineAt, probe });
       }
 
       let record = claim.record;
@@ -294,6 +339,7 @@ export function createSluice(options: SluiceOptions): Sluice {
               leaseMs,
               deadlineAt,
               reclaimed: true,
+              probe,
             });
           }
           continue;
@@ -340,13 +386,81 @@ export function createSluice(options: SluiceOptions): Sluice {
     return current;
   }
 
+  /**
+   * The circuit refused execution. Recorded outcomes still replay — the
+   * breaker protects the downstream, not the ledger — but anything that
+   * would EXECUTE (fresh claim, reclaim, waiting on someone else's lease)
+   * fails fast with E_CIRCUIT_OPEN.
+   */
+  async function settleWithoutExecution<T extends Json>(
+    spec: EffectSpec,
+    ns: string,
+    fingerprint: string | null,
+    onIndeterminate: "fail" | "reclaim" | "gate",
+    circuit: CircuitRecord
+  ): Promise<EffectOutcome<T>> {
+    const existing = await store.readEffect(ns, spec.key).catch((cause: unknown) => {
+      throw wrapStoreError(cause, "readEffect failed while the circuit is open");
+    });
+    if (
+      existing !== null &&
+      fingerprint !== null &&
+      existing.fingerprint !== null &&
+      existing.fingerprint !== fingerprint
+    ) {
+      // F9 outranks the breaker.
+      await emit({
+        subjectType: "effect",
+        subjectKey: spec.key,
+        type: "effect.key_conflict",
+        namespace: ns,
+        data: { expected: existing.fingerprint, got: fingerprint },
+      });
+      throw new SluiceError("E_KEY_CONFLICT", "idempotency key reused with different arguments", {
+        context: { namespace: ns, key: spec.key },
+      });
+    }
+    if (existing?.status === "succeeded") {
+      await emit({
+        subjectType: "effect",
+        subjectKey: spec.key,
+        type: "effect.replayed",
+        namespace: ns,
+        data: { firstSeenAt: existing.createdAt },
+      });
+      return toReplayedOutcome<T>(existing);
+    }
+    if (existing?.status === "failed") throwTerminalFailure(existing);
+    if (existing?.status === "indeterminate" && onIndeterminate === "fail") {
+      throwTerminalFailure(existing);
+    }
+    throw new SluiceError("E_CIRCUIT_OPEN", "circuit is open for this circuitKey — failing fast", {
+      retryable: true,
+      context: {
+        namespace: ns,
+        key: spec.key,
+        circuitKey: spec.circuitKey ?? null,
+        state: circuit.state,
+        retryAtMs:
+          circuit.openedAt !== null && circuit.openMs !== null
+            ? circuit.openedAt + circuit.openMs
+            : null,
+      },
+    });
+  }
+
   async function execute<T extends Json>(
     spec: EffectSpec,
     fn: (ctx: EffectContext) => Promise<T>,
     record: EffectRecord,
-    o: { ns: string; leaseMs: number; deadlineAt: number; reclaimed?: boolean }
+    o: { ns: string; leaseMs: number; deadlineAt: number; reclaimed?: boolean; probe?: boolean }
   ): Promise<EffectOutcome<T>> {
     const { ns, leaseMs, deadlineAt } = o;
+    const policy: RetryPolicy = { ...baseRetryPolicy, ...spec.retry };
+    // A half-open probe is ONE downstream attempt by definition (SPEC §5).
+    const maxAttempts = o.probe === true ? 1 : Math.max(1, policy.maxAttempts);
+    const budgetKey = RetryBudget.key(ns, spec.circuitKey);
+    budget.deposit(budgetKey); // every call funds 10% of a retry (F7)
     await emit({
       subjectType: "effect",
       subjectKey: spec.key,
@@ -379,19 +493,106 @@ export function createSluice(options: SluiceOptions): Sluice {
       },
     };
 
+    /** Advisory breaker write — must never fail the caller's effect. */
+    const recordOutcome = async (ok: boolean): Promise<void> => {
+      if (breakers === null || spec.circuitKey === undefined) return;
+      try {
+        await breakers.recordOutcome(ns, spec.circuitKey, ok, o.probe === true);
+      } catch {
+        // Breaker state is advisory; the effect outcome is what matters.
+      }
+    };
+
     let value: T;
     try {
-      value = await fn(ctx);
-    } catch (cause) {
-      try {
-        return await persistThrow(spec, record, ns, cause, abort.signal.reason);
-      } finally {
-        deadlineTimer.stop();
-        heartbeat.stop();
+      // The retry loop (SPEC §5): full-jitter backoff INSIDE this one lease.
+      // Only terminal outcomes ever persist; a retryable throw stays in-loop.
+      for (let tries = 1; ; tries++) {
+        try {
+          value = await fn(ctx);
+          await recordOutcome(true);
+          break;
+        } catch (cause) {
+          const classification = classifyThrow(cause, abort.signal.reason);
+          // Our own abort (deadline / lease loss) is not downstream health.
+          if (cause !== abort.signal.reason) await recordOutcome(false);
+          if (classification !== "retryable") {
+            return await persistThrow(spec, record, ns, cause, classification);
+          }
+          if (tries >= maxAttempts) {
+            return await persistThrow(spec, record, ns, cause, "retryable", { tries });
+          }
+          const hint = retryAfterHint(cause, clock.now());
+          if (hint !== null && hint.ms > policy.maxRetryAfterMs) {
+            // SPEC §5: beyond the cap, fail fast with the header surfaced.
+            return await failTerminal(spec, record, ns, cause, {
+              code: "E_EFFECT_FAILED",
+              message: `Retry-After ${hint.raw} exceeds maxRetryAfterMs — failing fast`,
+              context: {
+                retryAfter: hint.raw,
+                retryAfterMs: hint.ms,
+                maxRetryAfterMs: policy.maxRetryAfterMs,
+              },
+            });
+          }
+          if (!budget.tryWithdraw(budgetKey)) {
+            // F7: the retry-storm defence. Exhaustion is an immediate fast-fail.
+            await emit({
+              subjectType: "effect",
+              subjectKey: spec.key,
+              type: "retry.budget_exhausted",
+              attempt: record.attempt,
+              namespace: ns,
+              data: { budgetKey },
+            });
+            return await failTerminal(spec, record, ns, cause, {
+              code: "E_RETRY_BUDGET",
+              message: "retry budget exhausted — failing fast instead of amplifying",
+              context: { budgetKey },
+            });
+          }
+          const delayMs = hint === null ? backoffDelayMs(policy, tries, random) : hint.ms;
+          if (clock.now() + delayMs > deadlineAt) {
+            // Between attempts nothing is in flight: the last attempt provably
+            // failed, so this is E_DEADLINE on a `failed` record — not
+            // indeterminate (contrast with a deadline mid-execution).
+            return await failTerminal(spec, record, ns, cause, {
+              code: "E_DEADLINE",
+              message: "deadline would pass before the next retry",
+              context: { tries, delayMs },
+            });
+          }
+          await emit({
+            subjectType: "effect",
+            subjectKey: spec.key,
+            type: "effect.attempt_failed",
+            attempt: record.attempt,
+            namespace: ns,
+            data: {
+              try: tries,
+              delayMs,
+              message: safeMessage(cause),
+              ...(hint === null ? {} : { retryAfter: hint.raw }),
+            },
+          });
+          if (delayMs > 0) {
+            try {
+              await clock.sleep(delayMs, abort.signal);
+            } catch {
+              const reason: unknown = abort.signal.reason;
+              if (reason instanceof SluiceError && reason.code === "E_LEASE_LOST") {
+                // The lease vanished while we waited to retry — fail closed.
+                return await persistThrow(spec, record, ns, reason, "indeterminate");
+              }
+              return await failTerminal(spec, record, ns, cause, {
+                code: "E_DEADLINE",
+                message: "deadline exceeded while waiting to retry",
+                context: { tries, delayMs },
+              });
+            }
+          }
+        }
       }
-    }
-
-    try {
       const serialized = canonicalJson(value);
       const tooLarge = utf8Length(serialized) > maxResultBytes;
       try {
@@ -430,17 +631,18 @@ export function createSluice(options: SluiceOptions): Sluice {
     }
   }
 
-  /** Terminal handling for a throwing effect function. Always throws. */
+  /**
+   * Terminal handling for a throwing effect function (classification already
+   * decided; retryable means retries were exhausted). Always throws.
+   */
   async function persistThrow(
     spec: EffectSpec,
     record: EffectRecord,
     ns: string,
     cause: unknown,
-    abortReason: unknown
+    classification: Classification,
+    extra?: { tries?: number }
   ): Promise<never> {
-    const classification = classifyThrow(cause, abortReason);
-    // Retries land in M3: a retryable classification currently exhausts
-    // immediately and persists as failed with the retryable bit stored.
     const indeterminate = classification === "indeterminate";
     const stored: StoredError = {
       code:
@@ -486,7 +688,57 @@ export function createSluice(options: SluiceOptions): Sluice {
       );
     }
     throw new SluiceError("E_EFFECT_FAILED", stored.message, {
-      context: { namespace: ns, key: spec.key },
+      context: {
+        namespace: ns,
+        key: spec.key,
+        ...(extra?.tries === undefined ? {} : { tries: extra.tries }),
+      },
+      cause,
+    });
+  }
+
+  /**
+   * Persist a `failed` terminal state for a policy-driven fast-fail (retry
+   * budget, Retry-After cap, deadline between attempts) and throw the given
+   * typed error. Always throws.
+   */
+  async function failTerminal(
+    spec: EffectSpec,
+    record: EffectRecord,
+    ns: string,
+    cause: unknown,
+    t: { code: SluiceErrorCode; message: string; context: Record<string, Json> }
+  ): Promise<never> {
+    const stored: StoredError = {
+      code: t.code,
+      message: t.message,
+      retryable: false,
+      indeterminate: false,
+    };
+    try {
+      await store.completeEffect({
+        namespace: ns,
+        key: spec.key,
+        leaseOwner: owner,
+        status: "failed",
+        error: stored,
+        now: clock.now(),
+      });
+    } catch (persistCause) {
+      throw wrapStoreError(persistCause, "completeEffect failed while recording a fast-fail", {
+        indeterminate: true,
+      });
+    }
+    await emit({
+      subjectType: "effect",
+      subjectKey: spec.key,
+      type: "effect.failed",
+      attempt: record.attempt,
+      namespace: ns,
+      data: { message: t.message, code: t.code },
+    });
+    throw new SluiceError(t.code, t.message, {
+      context: { namespace: ns, key: spec.key, ...t.context },
       cause,
     });
   }

@@ -12,6 +12,8 @@ export const SLUICE_VERSION = "0.1.0-alpha.0";
 export { canonicalJson, type Json } from "./json.js";
 export { sha256Hex } from "./sha256.js";
 export { MemoryStore } from "./memory-store.js";
+export { DEFAULT_RETRY_POLICY, type RetryPolicy } from "./retry.js";
+export { DEFAULT_CIRCUIT_POLICY } from "./circuit.js";
 export { createSluice, idempotencyKey, type Sluice, type SluiceOptions } from "./sluice.js";
 export {
   Indeterminate,
@@ -20,6 +22,9 @@ export {
   type AuditEvent,
   type AuditEventType,
   type AuditInput,
+  type CircuitPolicy,
+  type CircuitRecord,
+  type CircuitState,
   type ClaimResult,
   type Classification,
   type ClassifyFn,

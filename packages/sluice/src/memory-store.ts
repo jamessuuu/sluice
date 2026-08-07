@@ -1,5 +1,6 @@
 import type {
   AuditEvent,
+  CircuitRecord,
   ClaimResult,
   CompleteEffectInput,
   EffectRecord,
@@ -17,6 +18,7 @@ import { SluiceError } from "./types.js";
  */
 export class MemoryStore implements SluiceStore {
   private readonly effects = new Map<string, EffectRecord>();
+  private readonly circuits = new Map<string, CircuitRecord>();
   private readonly events: AuditEvent[] = [];
   private readonly seqs = new Map<string, number>();
 
@@ -165,6 +167,39 @@ export class MemoryStore implements SluiceStore {
     return Promise.resolve(record === undefined ? null : { ...record });
   }
 
+  readCircuit(key: string): Promise<CircuitRecord | null> {
+    const record = this.circuits.get(key);
+    return Promise.resolve(record === undefined ? null : cloneCircuit(record));
+  }
+
+  writeCircuit(
+    record: Omit<CircuitRecord, "version">,
+    expectedVersion: number | null
+  ): Promise<{ ok: boolean; record: CircuitRecord | null }> {
+    const existing = this.circuits.get(record.key);
+    if (expectedVersion === null) {
+      if (existing !== undefined) {
+        return Promise.resolve({ ok: false, record: cloneCircuit(existing) });
+      }
+      const created: CircuitRecord = { ...record, window: [...record.window], version: 1 };
+      this.circuits.set(record.key, created);
+      return Promise.resolve({ ok: true, record: cloneCircuit(created) });
+    }
+    if (existing?.version !== expectedVersion) {
+      return Promise.resolve({
+        ok: false,
+        record: existing === undefined ? null : cloneCircuit(existing),
+      });
+    }
+    const updated: CircuitRecord = {
+      ...record,
+      window: [...record.window],
+      version: expectedVersion + 1,
+    };
+    this.circuits.set(record.key, updated);
+    return Promise.resolve({ ok: true, record: cloneCircuit(updated) });
+  }
+
   appendEvents(
     events: Omit<AuditEvent, "id" | "seq" | "prevHash" | "hash">[]
   ): Promise<AuditEvent[]> {
@@ -203,4 +238,8 @@ export class MemoryStore implements SluiceStore {
     }
     return Promise.resolve({ effects, gates: 0, events: 0 });
   }
+}
+
+function cloneCircuit(record: CircuitRecord): CircuitRecord {
+  return { ...record, window: [...record.window] };
 }

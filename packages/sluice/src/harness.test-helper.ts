@@ -7,6 +7,7 @@
 
 import type {
   AuditEvent,
+  CircuitRecord,
   ClaimResult,
   Clock,
   CompleteEffectInput,
@@ -135,6 +136,17 @@ export class FaultyStore implements SluiceStore {
   readEffect(namespace: string, key: string): Promise<EffectRecord | null> {
     this.check("readEffect");
     return this.inner.readEffect(namespace, key);
+  }
+
+  readCircuit(key: string): Promise<CircuitRecord | null> {
+    return this.inner.readCircuit(key);
+  }
+
+  writeCircuit(
+    record: Omit<CircuitRecord, "version">,
+    expectedVersion: number | null
+  ): Promise<{ ok: boolean; record: CircuitRecord | null }> {
+    return this.inner.writeCircuit(record, expectedVersion);
   }
 
   appendEvents(

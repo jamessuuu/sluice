@@ -1,4 +1,5 @@
 import { CircuitBreakers, DEFAULT_CIRCUIT_POLICY, type Admission } from "./circuit.js";
+import { createGates, type GatesApi } from "./gates.js";
 import { canonicalJson, type Json } from "./json.js";
 import {
   backoffDelayMs,
@@ -24,6 +25,8 @@ import {
   type EffectOutcome,
   type EffectRecord,
   type EffectSpec,
+  type GateRecord,
+  type GateSpec,
   type SluiceErrorCode,
   type SluiceStore,
   type StoredError,
@@ -52,6 +55,8 @@ export interface SluiceOptions {
   retentionMs?: number;
   maxResultBytes?: number;
   audit?: { sink?: (e: AuditEvent) => void };
+  /** Only needed to mint/verify approval tokens (SPEC §5 auth model). */
+  approvalSecret?: string;
 }
 
 export interface Sluice {
@@ -61,6 +66,16 @@ export interface Sluice {
   ): Promise<EffectOutcome<T>>;
   inspect(key: string, namespace?: string): Promise<EffectRecord | null>;
   sweep(now?: number): Promise<{ effects: number; gates: number; events: number }>;
+  readonly gates: GatesApi;
+  /**
+   * open + waitFor sugar. Resolves only on approval; throws E_GATE_REJECTED
+   * on reject/cancel and E_GATE_TIMEOUT on timeout (SPEC §5). Waits longer
+   * than ~5 minutes should use gates.open() + claimDecided() instead.
+   */
+  gate(
+    spec: GateSpec,
+    o?: { maxWaitMs?: number; pollMs?: number; signal?: AbortSignal }
+  ): Promise<GateRecord & { status: "approved" }>;
   readonly audit: {
     append(e: AuditInput): Promise<AuditEvent>;
     since(cursor: { namespace: string; seq: number }, limit?: number): Promise<AuditEvent[]>;
@@ -96,6 +111,15 @@ export function createSluice(options: SluiceOptions): Sluice {
           (e) => emit(e)
         );
   const budget = new RetryBudget();
+  const gates = createGates({
+    store,
+    namespace,
+    owner,
+    clock,
+    random,
+    approvalSecret: options.approvalSecret,
+    emit: (e) => emit(e),
+  });
 
   async function emit(input: AuditInput): Promise<AuditEvent> {
     let events: AuditEvent[];
@@ -213,11 +237,12 @@ export function createSluice(options: SluiceOptions): Sluice {
       );
     }
     const onIndeterminate = spec.onIndeterminate ?? "fail";
-    if (onIndeterminate === "gate") {
-      // Replaced in M4 when the gate state machine lands (SPEC §10).
-      throw new SluiceError("E_CONFIG", "onIndeterminate:'gate' lands in M4", {
-        context: { key: spec.key },
-      });
+    if (onIndeterminate === "gate" && spec.gate === undefined) {
+      throw new SluiceError(
+        "E_CONFIG",
+        "onIndeterminate:'gate' requires a gate spec (SPEC §5: required iff 'gate')",
+        { context: { key: spec.key } }
+      );
     }
     const ns = spec.namespace ?? namespace;
     const leaseMs = spec.leaseMs ?? DEFAULT_LEASE_MS;
@@ -343,6 +368,26 @@ export function createSluice(options: SluiceOptions): Sluice {
             });
           }
           continue;
+        }
+        if (onIndeterminate === "gate" && spec.gate !== undefined) {
+          // F2 'gate': open the "did this land?" gate (idempotent on its
+          // (ns,key)) and STILL fail closed — a human answers out-of-band and
+          // a fresh process resumes via gates.claimDecided(). run() never
+          // blocks on a human.
+          const gate = await gates.open(spec.gate);
+          throw new SluiceError(
+            "E_INDETERMINATE",
+            "effect outcome is unknown; an approval gate is open to resolve it",
+            {
+              indeterminate: true,
+              context: {
+                namespace: ns,
+                key: spec.key,
+                gateId: gate.id,
+                gateStatus: gate.status,
+              },
+            }
+          );
         }
         // Default 'fail' (F2/F3/F4): never success, never re-executed.
         throwTerminalFailure(record);
@@ -827,10 +872,38 @@ export function createSluice(options: SluiceOptions): Sluice {
     };
   }
 
+  /** sluice.gate() sugar: open + waitFor; only an approval returns (SPEC §5). */
+  async function gateSugar(
+    spec: GateSpec,
+    o?: { maxWaitMs?: number; pollMs?: number; signal?: AbortSignal }
+  ): Promise<GateRecord & { status: "approved" }> {
+    const opened = await gates.open(spec);
+    const settled = opened.status === "pending" ? await gates.waitFor(opened.id, o) : opened;
+    if (settled.status === "approved") {
+      return { ...settled, status: "approved" };
+    }
+    if (settled.status === "timed_out") {
+      throw new SluiceError("E_GATE_TIMEOUT", "gate timed out before a decision (F12)", {
+        context: { id: settled.id, key: settled.key },
+      });
+    }
+    throw new SluiceError("E_GATE_REJECTED", "gate was not approved", {
+      context: {
+        id: settled.id,
+        key: settled.key,
+        status: settled.status,
+        decidedBy: settled.decidedBy,
+        reason: settled.decisionReason,
+      },
+    });
+  }
+
   return {
     run,
     inspect: (key, ns) => store.readEffect(ns ?? namespace, key),
     sweep: (now) => store.sweep(now ?? clock.now()),
+    gates,
+    gate: gateSugar,
     audit: {
       append: emit,
       since: (cursor, limit) => store.readEvents(cursor.namespace, cursor.seq, limit ?? 100),

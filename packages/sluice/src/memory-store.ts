@@ -4,6 +4,8 @@ import type {
   ClaimResult,
   CompleteEffectInput,
   EffectRecord,
+  GateRecord,
+  GateStatus,
   SluiceStore,
 } from "./types.js";
 import { SluiceError } from "./types.js";
@@ -19,6 +21,9 @@ import { SluiceError } from "./types.js";
 export class MemoryStore implements SluiceStore {
   private readonly effects = new Map<string, EffectRecord>();
   private readonly circuits = new Map<string, CircuitRecord>();
+  /** By id; the (namespace, key) unique index lives in gateIds. */
+  private readonly gates = new Map<string, GateRecord>();
+  private readonly gateIds = new Map<string, string>();
   private readonly events: AuditEvent[] = [];
   private readonly seqs = new Map<string, number>();
 
@@ -167,6 +172,128 @@ export class MemoryStore implements SluiceStore {
     return Promise.resolve(record === undefined ? null : { ...record });
   }
 
+  openGate(candidate: GateRecord): Promise<{ created: boolean; record: GateRecord }> {
+    const idxKey = this.effectId(candidate.namespace, candidate.key);
+    const existingId = this.gateIds.get(idxKey);
+    if (existingId !== undefined) {
+      const existing = this.gates.get(existingId);
+      if (existing !== undefined) {
+        return Promise.resolve({ created: false, record: cloneGate(existing) });
+      }
+    }
+    const record = cloneGate(candidate);
+    this.gates.set(record.id, record);
+    this.gateIds.set(idxKey, record.id);
+    return Promise.resolve({ created: true, record: cloneGate(record) });
+  }
+
+  readGate(id: string): Promise<GateRecord | null> {
+    const record = this.gates.get(id);
+    return Promise.resolve(record === undefined ? null : cloneGate(record));
+  }
+
+  decideGate(input: {
+    id: string;
+    status: "approved" | "rejected" | "cancelled";
+    decidedBy: string;
+    reason: string | null;
+    tokenHash: string | null;
+    tokenNonce: string | null;
+    now: number;
+  }): Promise<{ applied: boolean; record: GateRecord | null }> {
+    const existing = this.gates.get(input.id);
+    if (existing === undefined) {
+      return Promise.resolve({ applied: false, record: null });
+    }
+    if (existing.status !== "pending") {
+      // First writer won earlier — return the recorded decision (F6).
+      return Promise.resolve({ applied: false, record: cloneGate(existing) });
+    }
+    const updated: GateRecord = {
+      ...existing,
+      status: input.status,
+      decidedAt: input.now,
+      decidedBy: input.decidedBy,
+      decisionReason: input.reason,
+      tokenHash: input.tokenHash,
+      tokenNonce: input.tokenNonce,
+    };
+    this.gates.set(updated.id, updated);
+    return Promise.resolve({ applied: true, record: cloneGate(updated) });
+  }
+
+  listGates(q: {
+    namespace?: string;
+    status?: GateStatus;
+    limit?: number;
+  }): Promise<GateRecord[]> {
+    const out: GateRecord[] = [];
+    for (const record of this.gates.values()) {
+      if (q.namespace !== undefined && record.namespace !== q.namespace) continue;
+      if (q.status !== undefined && record.status !== q.status) continue;
+      out.push(cloneGate(record));
+    }
+    out.sort((a, b) => a.createdAt - b.createdAt);
+    return Promise.resolve(out.slice(0, q.limit ?? 100));
+  }
+
+  claimDecidedGates(input: {
+    owner: string;
+    leaseMs: number;
+    limit: number;
+    now: number;
+  }): Promise<GateRecord[]> {
+    const claimed: GateRecord[] = [];
+    for (const record of this.gates.values()) {
+      if (claimed.length >= input.limit) break;
+      const decided =
+        record.status === "approved" ||
+        record.status === "rejected" ||
+        record.status === "timed_out";
+      if (!decided || record.processedAt !== null) continue;
+      const claimFree =
+        record.claimOwner === null ||
+        (record.claimExpiresAt !== null && record.claimExpiresAt < input.now);
+      if (!claimFree) continue;
+      const updated: GateRecord = {
+        ...record,
+        claimOwner: input.owner,
+        claimExpiresAt: input.now + input.leaseMs,
+      };
+      this.gates.set(updated.id, updated);
+      claimed.push(cloneGate(updated));
+    }
+    return Promise.resolve(claimed);
+  }
+
+  ackGate(input: { id: string; owner: string; now: number }): Promise<boolean> {
+    const existing = this.gates.get(input.id);
+    if (existing?.claimOwner !== input.owner || existing.processedAt !== null) {
+      return Promise.resolve(false);
+    }
+    this.gates.set(input.id, { ...existing, processedAt: input.now });
+    return Promise.resolve(true);
+  }
+
+  expireGates(now: number): Promise<GateRecord[]> {
+    const transitioned: GateRecord[] = [];
+    for (const record of this.gates.values()) {
+      if (record.status !== "pending" || record.expiresAt > now) continue;
+      const updated: GateRecord = {
+        ...record,
+        // F12: default 'reject' resolves to timed_out (fail closed); the
+        // explicit 'approve' opt-in auto-approves with a machine decider.
+        status: record.onTimeout === "approve" ? "approved" : "timed_out",
+        decidedAt: record.expiresAt,
+        decidedBy: "sluice:timeout",
+        decisionReason: `gate timed out (onTimeout: ${record.onTimeout})`,
+      };
+      this.gates.set(updated.id, updated);
+      transitioned.push(cloneGate(updated));
+    }
+    return Promise.resolve(transitioned);
+  }
+
   readCircuit(key: string): Promise<CircuitRecord | null> {
     const record = this.circuits.get(key);
     return Promise.resolve(record === undefined ? null : cloneCircuit(record));
@@ -242,4 +369,14 @@ export class MemoryStore implements SluiceStore {
 
 function cloneCircuit(record: CircuitRecord): CircuitRecord {
   return { ...record, window: [...record.window] };
+}
+
+function cloneGate(record: GateRecord): GateRecord {
+  return {
+    ...record,
+    action: { ...record.action },
+    presentation: record.presentation === null ? null : { ...record.presentation },
+    requester: { ...record.requester },
+    approvers: [...record.approvers],
+  };
 }

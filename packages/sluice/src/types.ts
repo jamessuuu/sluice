@@ -119,6 +119,8 @@ export interface EffectSpec {
   /** Enables the breaker and keys the retry budget for this effect. */
   circuitKey?: string;
   onIndeterminate?: "fail" | "reclaim" | "gate";
+  /** Required iff onIndeterminate:'gate' — the "did this land?" gate (F2). */
+  gate?: GateSpec;
   retentionMs?: number;
 }
 
@@ -177,6 +179,77 @@ export interface AuditInput {
   attempt?: number;
   actor?: string;
   data?: Record<string, Json>;
+}
+
+// ── gates ─────────────────────────────────────────────────────────────────────
+
+export type GateStatus = "pending" | "approved" | "rejected" | "timed_out" | "cancelled";
+
+export interface GateAction {
+  kind: string;
+  tool?: string;
+  args?: Json;
+  digest?: string;
+}
+
+export interface GatePresentation {
+  title: string;
+  summary?: string;
+  details?: Json;
+}
+
+export interface GateSpec {
+  key: string;
+  namespace?: string;
+  action: GateAction;
+  presentation?: GatePresentation;
+  /** Opaque ids — sluice performs no identity resolution (SPEC §1). */
+  requester: { actor: string; runId?: string };
+  approvers?: string[];
+  /** REQUIRED — there is no unbounded gate (SPEC §5). */
+  timeoutMs: number;
+  /** Default 'reject' — gates fail closed (F12). */
+  onTimeout?: "reject" | "approve";
+  /** ≤ 32 KiB — what a NEW process needs to continue (F5). */
+  resumeContext?: Json;
+}
+
+/**
+ * One row of `sluice_gate` (SPEC §3). `onTimeout` is a spec addition: §3's
+ * column list omits it, but sweepTimeouts runs in a fresh process that has
+ * only the row, so the policy must be persisted (Postgres packs it into
+ * action_json at M6; additive-only migration policy allows it).
+ */
+export interface GateRecord {
+  /** uuidv7, generated in-app from the injected clock + random (SPEC §3). */
+  id: string;
+  namespace: string;
+  key: string;
+  status: GateStatus;
+  action: GateAction;
+  presentation: GatePresentation | null;
+  requester: { actor: string; runId: string | null };
+  approvers: string[];
+  onTimeout: "reject" | "approve";
+  resumeContext: Json | null;
+  createdAt: number;
+  /** createdAt + timeoutMs — the timeout horizon, not retention. */
+  expiresAt: number;
+  decidedAt: number | null;
+  decidedBy: string | null;
+  decisionReason: string | null;
+  tokenHash: string | null;
+  tokenNonce: string | null;
+  claimOwner: string | null;
+  claimExpiresAt: number | null;
+  processedAt: number | null;
+}
+
+/** A leased decided gate handed to a resuming process (F5). */
+export interface GateClaim {
+  gate: GateRecord;
+  /** Mark post-decision processing done; conditional on still holding the claim. */
+  ack(): Promise<void>;
 }
 
 // ── circuit breaker ───────────────────────────────────────────────────────────
@@ -328,6 +401,60 @@ export interface SluiceStore {
   }): Promise<{ ok: boolean }>;
 
   readEffect(namespace: string, key: string): Promise<EffectRecord | null>;
+
+  /**
+   * Insert the candidate gate, or return the existing row for its
+   * (namespace, key) — gates are idempotent like effects (SPEC §3).
+   */
+  openGate(candidate: GateRecord): Promise<{ created: boolean; record: GateRecord }>;
+
+  readGate(id: string): Promise<GateRecord | null>;
+
+  /**
+   * Conditional decision, `WHERE status='pending'` — first writer wins (F6).
+   * `applied:false` returns the current row (the recorded decision) so a
+   * second decide is idempotent, never an error.
+   */
+  decideGate(input: {
+    id: string;
+    status: "approved" | "rejected" | "cancelled";
+    decidedBy: string;
+    reason: string | null;
+    tokenHash: string | null;
+    tokenNonce: string | null;
+    now: number;
+  }): Promise<{ applied: boolean; record: GateRecord | null }>;
+
+  listGates(q: {
+    namespace?: string;
+    status?: GateStatus;
+    limit?: number;
+  }): Promise<GateRecord[]>;
+
+  /**
+   * Lease decided-but-unprocessed gates (approved | rejected | timed_out)
+   * whose claim is free or expired. The lease makes crash-resume safe: a dead
+   * claimant's gates become claimable again (F5).
+   */
+  claimDecidedGates(input: {
+    owner: string;
+    leaseMs: number;
+    limit: number;
+    now: number;
+  }): Promise<GateRecord[]>;
+
+  /**
+   * Set processed_at, conditional on holding the claim. Spec addition: §5's
+   * store list has no processed_at setter, but §3 defines the column and a
+   * leased claimDecided is meaningless without a completion write.
+   */
+  ackGate(input: { id: string; owner: string; now: number }): Promise<boolean>;
+
+  /**
+   * Transition every expired pending gate per its onTimeout policy and
+   * return the transitioned rows (the caller emits the audit events).
+   */
+  expireGates(now: number): Promise<GateRecord[]>;
 
   readCircuit(key: string): Promise<CircuitRecord | null>;
 

@@ -12,6 +12,7 @@ import type {
   Clock,
   CompleteEffectInput,
   EffectRecord,
+  GateRecord,
   SluiceStore,
 } from "./types.js";
 
@@ -136,6 +137,38 @@ export class FaultyStore implements SluiceStore {
   readEffect(namespace: string, key: string): Promise<EffectRecord | null> {
     this.check("readEffect");
     return this.inner.readEffect(namespace, key);
+  }
+
+  openGate(candidate: GateRecord): Promise<{ created: boolean; record: GateRecord }> {
+    return this.inner.openGate(candidate);
+  }
+
+  readGate(id: string): Promise<GateRecord | null> {
+    return this.inner.readGate(id);
+  }
+
+  decideGate(
+    input: Parameters<SluiceStore["decideGate"]>[0]
+  ): Promise<{ applied: boolean; record: GateRecord | null }> {
+    return this.inner.decideGate(input);
+  }
+
+  listGates(q: Parameters<SluiceStore["listGates"]>[0]): Promise<GateRecord[]> {
+    return this.inner.listGates(q);
+  }
+
+  claimDecidedGates(
+    input: Parameters<SluiceStore["claimDecidedGates"]>[0]
+  ): Promise<GateRecord[]> {
+    return this.inner.claimDecidedGates(input);
+  }
+
+  ackGate(input: Parameters<SluiceStore["ackGate"]>[0]): Promise<boolean> {
+    return this.inner.ackGate(input);
+  }
+
+  expireGates(now: number): Promise<GateRecord[]> {
+    return this.inner.expireGates(now);
   }
 
   readCircuit(key: string): Promise<CircuitRecord | null> {

@@ -28,6 +28,7 @@ export default tseslint.config(
   },
   {
     files: ["packages/sluice/src/**/*.ts"],
+    ignores: ["packages/sluice/src/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -36,11 +37,21 @@ export default tseslint.config(
             {
               group: ["node:*"],
               message:
-                "SPEC §4 boundary: @jamessuuu/sluice core must not import node builtins (browser Web Worker compatibility + zero-dep guarantee). Inject capabilities via createSluice options.",
+                "SPEC §4 boundary: @jamessuuu/sluice core must not import node builtins (browser Web Worker compatibility + zero-dep guarantee). Inject capabilities via createSluice options. (Tests are exempt; the build tsconfig enforces types:[] on shipped code.)",
             },
           ],
         },
       ],
+    },
+  },
+  {
+    // SHA-256 hot loop: typed-array indexing under noUncheckedIndexedAccess.
+    // Bounds are structurally guaranteed (fixed-size Uint32Array, loop bounds);
+    // per-access guards would be noise. The FIPS vectors + node:crypto
+    // cross-check in sha256.test.ts are the real safety net.
+    files: ["packages/sluice/src/sha256.ts"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   {

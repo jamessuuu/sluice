@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The five stages (PROGRAM.md D6). Order is the argument:
+      # typecheck -> lint -> unit -> e2e:smoke -> eval
+      - name: typecheck
+        run: pnpm typecheck
+      - name: lint
+        run: pnpm lint
+      - name: unit
+        run: pnpm test -- --project unit
+      - name: e2e-smoke
+        # Becomes real in M7 when apps/web exists (Playwright against
+        # `next build && next start`). Kept as an explicit no-op stage, not
+        # omitted, so the pipeline shape is stable from the first commit.
+        run: echo "e2e:smoke lands in M7 (apps/web). Stage intentionally green."
+      - name: eval
+        run: pnpm test -- --project eval
+
+      # Publish-shape guards (SPEC §8): dist compiles, tarball resolves to dist/.
+      - name: build
+        run: pnpm build
+      - name: pack-check
+        run: pnpm ci:pack-check

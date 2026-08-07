@@ -1,0 +1,47 @@
+{
+  "name": "@jamessuuu/sluice",
+  "version": "0.1.0-alpha.0",
+  "description": "Exactly-once side effects for agent tool calls, plus human approval gates that survive a process crash.",
+  "license": "MIT",
+  "author": "James Lorenz Santos",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamessuuu/sluice.git",
+    "directory": "packages/sluice"
+  },
+  "homepage": "https://github.com/jamessuuu/sluice#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "keywords": [
+    "idempotency",
+    "exactly-once",
+    "human-in-the-loop",
+    "approval-gate",
+    "agents",
+    "tool-calls",
+    "reliability"
+  ]
+}

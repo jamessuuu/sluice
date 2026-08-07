@@ -1,0 +1,41 @@
+{
+  "name": "@jamessuuu/sluice-testkit",
+  "version": "0.1.0-alpha.0",
+  "description": "Deterministic chaos harness for @jamessuuu/sluice: fake transport, fault plans, virtual clock, crash controller, store conformance suite.",
+  "license": "MIT",
+  "author": "James Lorenz Santos",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamessuuu/sluice.git",
+    "directory": "packages/sluice-testkit"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "golden",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@jamessuuu/sluice": "workspace:^"
+  }
+}

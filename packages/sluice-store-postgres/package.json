@@ -1,0 +1,44 @@
+{
+  "name": "@jamessuuu/sluice-store-postgres",
+  "version": "0.1.0-alpha.0",
+  "description": "Postgres/Neon store adapter for @jamessuuu/sluice (Drizzle, forward-only migrations, single-statement operations).",
+  "license": "MIT",
+  "author": "James Lorenz Santos",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamessuuu/sluice.git",
+    "directory": "packages/sluice-store-postgres"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "migrations",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  },
+  "peerDependencies": {
+    "@jamessuuu/sluice": "workspace:^"
+  }
+}

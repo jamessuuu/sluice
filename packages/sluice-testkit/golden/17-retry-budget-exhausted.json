@@ -1,0 +1,35 @@
+{
+  "id": "17-retry-budget-exhausted",
+  "scenario": "retry-storm",
+  "seed": 3,
+  "plan": {
+    "errorRate": 0,
+    "attemptOverrides": [
+      "error",
+      "error",
+      "error",
+      "error",
+      "error",
+      "error"
+    ]
+  },
+  "config": {
+    "intents": 1,
+    "maxAttempts": 6
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "effect:intent-0": "failed"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.attempt_failed",
+      "effect.attempt_failed",
+      "effect.attempt_failed",
+      "retry.budget_exhausted",
+      "effect.failed"
+    ],
+    "attempts": 4
+  }
+}

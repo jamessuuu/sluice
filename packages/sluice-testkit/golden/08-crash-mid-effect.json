@@ -1,0 +1,20 @@
+{
+  "id": "08-crash-mid-effect",
+  "scenario": "crash-mid-effect",
+  "seed": 1,
+  "plan": {},
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "indeterminate"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.indeterminate"
+    ],
+    "attempts": 1
+  }
+}

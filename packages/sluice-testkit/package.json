@@ -14,7 +14,8 @@
     "node": ">=22"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./chaos": "./src/chaos/suite.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -22,6 +23,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
+      },
+      "./chaos": {
+        "types": "./dist/chaos/suite.d.ts",
+        "default": "./dist/chaos/suite.js"
       }
     }
   },

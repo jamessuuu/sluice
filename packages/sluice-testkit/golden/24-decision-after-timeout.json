@@ -1,0 +1,22 @@
+{
+  "id": "24-decision-after-timeout",
+  "scenario": "out-of-order-decision",
+  "seed": 1,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "late"
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "gate:gate-intent-0": "timed_out"
+    },
+    "eventTypes": [
+      "gate.opened",
+      "gate.timed_out",
+      "gate.decided"
+    ],
+    "attempts": 0
+  }
+}

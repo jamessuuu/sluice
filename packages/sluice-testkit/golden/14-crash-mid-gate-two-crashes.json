@@ -1,0 +1,31 @@
+{
+  "id": "14-crash-mid-gate-two-crashes",
+  "scenario": "crash-mid-gate",
+  "seed": 2,
+  "plan": {
+    "crashes": 2
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:resume-intent-0": "succeeded",
+      "gate:gate-intent-0": "approved"
+    },
+    "eventTypes": [
+      "gate.opened",
+      "gate.decided",
+      "gate.claimed",
+      "effect.claimed",
+      "effect.succeeded",
+      "gate.claimed",
+      "effect.replayed",
+      "gate.claimed",
+      "effect.replayed",
+      "gate.resumed"
+    ],
+    "attempts": 1
+  }
+}

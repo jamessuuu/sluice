@@ -12,12 +12,15 @@
     "lint": "eslint .",
     "test": "vitest run",
     "build": "pnpm -r build",
-    "chaos": "node --import tsx packages/sluice-testkit/src/chaos/run.ts",
+    "chaos": "node --import tsx packages/sluice-testkit/src/chaos/run.ts && node scripts/chaos-report.mjs",
+    "chaos:goldens": "node --import tsx packages/sluice-testkit/src/chaos/generate-goldens.ts",
     "eval": "vitest run --project eval",
     "ci:pack-check": "node scripts/pack-check.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
+    "@jamessuuu/sluice": "workspace:^",
+    "@jamessuuu/sluice-testkit": "workspace:^",
     "@types/node": "^22.10.0",
     "eslint": "^9.20.0",
     "prettier": "^3.4.2",

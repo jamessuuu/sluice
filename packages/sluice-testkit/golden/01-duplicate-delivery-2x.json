@@ -1,0 +1,23 @@
+{
+  "id": "01-duplicate-delivery-2x",
+  "scenario": "duplicate-delivery",
+  "seed": 1,
+  "plan": {
+    "deliveries": 2
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.succeeded",
+      "effect.replayed"
+    ],
+    "attempts": 1
+  }
+}

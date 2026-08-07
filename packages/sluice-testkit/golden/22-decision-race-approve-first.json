@@ -1,0 +1,22 @@
+{
+  "id": "22-decision-race-approve-first",
+  "scenario": "out-of-order-decision",
+  "seed": 1,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "approve-first"
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "gate:gate-intent-0": "approved"
+    },
+    "eventTypes": [
+      "gate.opened",
+      "gate.decided",
+      "gate.decided"
+    ],
+    "attempts": 0
+  }
+}

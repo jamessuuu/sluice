@@ -1,0 +1,22 @@
+{
+  "id": "11-crash-before-effect-reclaim",
+  "scenario": "crash-before-effect",
+  "seed": 2,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "reclaim"
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.indeterminate",
+      "effect.claimed",
+      "effect.succeeded"
+    ],
+    "attempts": 1
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "10-crash-before-effect-fail",
+  "scenario": "crash-before-effect",
+  "seed": 1,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "fail"
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "effect:intent-0": "indeterminate"
+    },
+    "eventTypes": [
+      "effect.indeterminate"
+    ],
+    "attempts": 0
+  }
+}

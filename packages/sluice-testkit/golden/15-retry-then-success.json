@@ -1,0 +1,27 @@
+{
+  "id": "15-retry-then-success",
+  "scenario": "retry-storm",
+  "seed": 1,
+  "plan": {
+    "errorRate": 0,
+    "attemptOverrides": [
+      "error",
+      "ok"
+    ]
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.attempt_failed",
+      "effect.succeeded"
+    ],
+    "attempts": 2
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "generatedAt": "2026-08-07T22:34:13.600Z",
+  "gitSha": "a5da1e42ec2cad72653eba360939d3533ec795c3",
+  "harness": {
+    "scenarios": 9,
+    "seedsPerScenario": 10,
+    "totalRuns": 90,
+    "totalIntents": 740,
+    "totalDeliveries": 1014,
+    "totalLedger": 487,
+    "invariantsChecked": [
+      "I1",
+      "I2",
+      "I3",
+      "I4",
+      "I5",
+      "I6",
+      "I7",
+      "I8"
+    ],
+    "invariantViolations": 0,
+    "violationDetails": []
+  },
+  "scenarios": [
+    {
+      "name": "duplicate-delivery",
+      "seeds": 10,
+      "intents": 60,
+      "deliveries": 214,
+      "ledger": 60,
+      "attempts": 60,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "timeout-then-success",
+      "seeds": 10,
+      "intents": 60,
+      "deliveries": 120,
+      "ledger": 60,
+      "attempts": 60,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "crash-mid-effect",
+      "seeds": 10,
+      "intents": 30,
+      "deliveries": 60,
+      "ledger": 30,
+      "attempts": 30,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "crash-before-effect",
+      "seeds": 10,
+      "intents": 30,
+      "deliveries": 60,
+      "ledger": 0,
+      "attempts": 0,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "crash-mid-gate",
+      "seeds": 10,
+      "intents": 20,
+      "deliveries": 40,
+      "ledger": 20,
+      "attempts": 20,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "retry-storm",
+      "seeds": 10,
+      "intents": 400,
+      "deliveries": 400,
+      "ledger": 237,
+      "attempts": 350,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "clock-skew",
+      "seeds": 10,
+      "intents": 40,
+      "deliveries": 80,
+      "ledger": 40,
+      "attempts": 40,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "slow-downstream",
+      "seeds": 10,
+      "intents": 40,
+      "deliveries": 40,
+      "ledger": 40,
+      "attempts": 40,
+      "duplicateEffects": 0,
+      "violations": 0
+    },
+    {
+      "name": "out-of-order-decision",
+      "seeds": 10,
+      "intents": 60,
+      "deliveries": 0,
+      "ledger": 0,
+      "attempts": 0,
+      "duplicateEffects": 0,
+      "violations": 0
+    }
+  ],
+  "baseline": {
+    "workload": {
+      "intents": 20,
+      "seeds": 10,
+      "deliveries": [
+        2,
+        5
+      ],
+      "errorRate": 0.15,
+      "timeoutRate": 0.15,
+      "injectedFailureRate": 0.3
+    },
+    "naive": {
+      "successRate": 1,
+      "duplicateEffects": 666,
+      "attempts": 1031,
+      "deliveries": 714
+    },
+    "sluice": {
+      "successRate": 0.77,
+      "duplicateEffects": 0,
+      "attempts": 228,
+      "failClosedRate": 0.2
+    }
+  },
+  "amplification": {
+    "injectedFailureRate": 0.3,
+    "factor": 0.875,
+    "gate": 1.5
+  },
+  "latency": {
+    "unit": "virtual clock ms (not wall clock)",
+    "p50": 0,
+    "p99": 60000,
+    "samples": 954
+  },
+  "golden": {
+    "total": 24,
+    "passed": 24,
+    "failures": []
+  },
+  "fuzz": {
+    "seeds": 200,
+    "violations": 0
+  }
+}

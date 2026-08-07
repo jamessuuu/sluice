@@ -31,7 +31,15 @@ jobs:
         # omitted, so the pipeline shape is stable from the first commit.
         run: echo "e2e:smoke lands in M7 (apps/web). Stage intentionally green."
       - name: eval
+        # golden 24/24 (zero tolerance) + 200-seed fuzz + an in-process
+        # re-run of the chaos suite diffed against the committed
+        # chaos/results/latest.json (SPEC §8).
         run: pnpm test -- --project eval
+      - name: chaos-drift
+        # The committed README chaos block and chaos/RESULTS.md must render
+        # byte-for-byte from the committed latest.json (SPEC §7: the README
+        # cannot drift from the numbers).
+        run: node scripts/chaos-report.mjs --check
 
       # Publish-shape guards (SPEC §8): dist compiles, tarball resolves to dist/.
       - name: build

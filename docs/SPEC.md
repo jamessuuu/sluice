@@ -250,6 +250,13 @@ sluice.audit.append(e: AuditInput): Promise<AuditEvent>;   // consumers may add 
 sluice.audit.since(c: { namespace; seq }, limit?): Promise<AuditEvent[]>;
 sluice.audit.export(ns: string, o?): AsyncIterable<AuditEvent>;      // dogwatch publishes this
 sluice.audit.verify(ns: string, o?): Promise<{ ok:boolean; brokenAt?:number; checked:number }>;
+
+// ADDENDUM 2026-08-08 (dogwatch SPEC §14 Q1, accepted by the dispatcher):
+// pure, store-free verification of an EXPORTED event slice — required by
+// dogwatch's browser verifier, useful to any consumer. Ships in the frozen
+// v1.0 surface alongside the hash chain (M9). Not domain-shaped.
+export function verifyEvents(events: AuditEvent[], prevHead?: string | null):
+  { ok: boolean; brokenAt?: number; checked: number };
 ```
 
 Event types: `effect.claimed | effect.attempt_failed | effect.succeeded | effect.failed |

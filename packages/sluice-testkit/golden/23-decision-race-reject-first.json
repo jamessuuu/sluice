@@ -1,0 +1,22 @@
+{
+  "id": "23-decision-race-reject-first",
+  "scenario": "out-of-order-decision",
+  "seed": 1,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "reject-first"
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "gate:gate-intent-0": "rejected"
+    },
+    "eventTypes": [
+      "gate.opened",
+      "gate.decided",
+      "gate.decided"
+    ],
+    "attempts": 0
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "06-timeout-fail-closed-latency",
+  "scenario": "timeout-then-success",
+  "seed": 2,
+  "plan": {
+    "latencyMs": 500
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "indeterminate"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.indeterminate"
+    ],
+    "attempts": 1
+  }
+}

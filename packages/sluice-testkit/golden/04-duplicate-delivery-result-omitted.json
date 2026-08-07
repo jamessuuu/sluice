@@ -1,0 +1,26 @@
+{
+  "id": "04-duplicate-delivery-result-omitted",
+  "scenario": "duplicate-delivery",
+  "seed": 4,
+  "plan": {
+    "deliveries": 3
+  },
+  "config": {
+    "intents": 1,
+    "resultBytes": 2048,
+    "maxResultBytes": 1024
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.succeeded",
+      "effect.replayed",
+      "effect.replayed"
+    ],
+    "attempts": 1
+  }
+}

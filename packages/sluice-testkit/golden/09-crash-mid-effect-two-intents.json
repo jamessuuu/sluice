@@ -1,0 +1,23 @@
+{
+  "id": "09-crash-mid-effect-two-intents",
+  "scenario": "crash-mid-effect",
+  "seed": 2,
+  "plan": {},
+  "config": {
+    "intents": 2
+  },
+  "expected": {
+    "ledgerCount": 2,
+    "finalStatus": {
+      "effect:intent-0": "indeterminate",
+      "effect:intent-1": "indeterminate"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.indeterminate",
+      "effect.claimed",
+      "effect.indeterminate"
+    ],
+    "attempts": 2
+  }
+}

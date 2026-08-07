@@ -30,8 +30,18 @@ side-effecting tool calls in:
 Zero runtime dependencies. No LLM anywhere. No telemetry.
 
 <!-- chaos:begin -->
-_Chaos-harness numbers land here at M5 (generated, CI-drift-checked — never
-hand-written)._
+**Chaos harness** — `golden 24/24 · fuzz 200 seeds · 0 invariant violations`
+
+| metric | naive retry (no sluice) | with sluice |
+|---|---|---|
+| intent success rate | 100.0% | 77.0% (20.0% fail closed — parked `indeterminate`, never silent) |
+| duplicate side effects | **666** | **0** |
+
+Baseline workload: 200 intents delivered 2–5× each under 30.0% injected failure (15.0% errors + 15.0% landed-but-timed-out).
+Retry amplification under 30.0% injected failure: **0.88×** downstream attempts per intent (CI gate ≤ 1.5).
+`run()` latency under fault injection: p50 0 ms · p99 60,000 ms — **virtual clock time, not wall clock**.
+Run shape: 9 scenarios × 10 seeds · 740 intents · 1,014 deliveries · git `a5da1e4`.
+Regenerate with `pnpm chaos` — full tables in [chaos/RESULTS.md](chaos/RESULTS.md).
 <!-- chaos:end -->
 
 ## Monorepo

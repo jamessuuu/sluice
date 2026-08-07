@@ -1,0 +1,25 @@
+{
+  "id": "03-duplicate-delivery-slow-winner",
+  "scenario": "duplicate-delivery",
+  "seed": 3,
+  "plan": {
+    "deliveries": 3,
+    "latencyMs": 250
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.succeeded",
+      "effect.replayed",
+      "effect.replayed"
+    ],
+    "attempts": 1
+  }
+}

@@ -45,6 +45,24 @@ export default tseslint.config(
     },
   },
   {
+    files: ["packages/sluice-testkit/src/**/*.ts"],
+    ignores: ["packages/sluice-testkit/src/chaos/**", "packages/sluice-testkit/src/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["node:*"],
+              message:
+                "SPEC §7 boundary: testkit primitives (FakeTransport/FaultPlan/VirtualClock/CrashController/scenarios) stay isomorphic-pure — the playground imports them in a Web Worker at M8. File I/O belongs in src/chaos/ (the CLI runner) only.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // SHA-256 hot loop: typed-array indexing under noUncheckedIndexedAccess.
     // Bounds are structurally guaranteed (fixed-size Uint32Array, loop bounds);
     // per-access guards would be noise. The FIPS vectors + node:crypto

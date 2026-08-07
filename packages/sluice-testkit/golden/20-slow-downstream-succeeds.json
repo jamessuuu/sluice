@@ -1,0 +1,22 @@
+{
+  "id": "20-slow-downstream-succeeds",
+  "scenario": "slow-downstream",
+  "seed": 1,
+  "plan": {
+    "latencyMs": 45000
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 1,
+    "finalStatus": {
+      "effect:intent-0": "succeeded"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.succeeded"
+    ],
+    "attempts": 1
+  }
+}

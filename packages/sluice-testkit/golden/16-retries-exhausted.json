@@ -1,0 +1,29 @@
+{
+  "id": "16-retries-exhausted",
+  "scenario": "retry-storm",
+  "seed": 2,
+  "plan": {
+    "errorRate": 0,
+    "attemptOverrides": [
+      "error",
+      "error",
+      "error"
+    ]
+  },
+  "config": {
+    "intents": 1
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "effect:intent-0": "failed"
+    },
+    "eventTypes": [
+      "effect.claimed",
+      "effect.attempt_failed",
+      "effect.attempt_failed",
+      "effect.failed"
+    ],
+    "attempts": 3
+  }
+}

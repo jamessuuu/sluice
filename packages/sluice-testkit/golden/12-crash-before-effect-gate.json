@@ -1,0 +1,25 @@
+{
+  "id": "12-crash-before-effect-gate",
+  "scenario": "crash-before-effect",
+  "seed": 3,
+  "plan": {},
+  "config": {
+    "intents": 1,
+    "variant": "gate"
+  },
+  "expected": {
+    "ledgerCount": 0,
+    "finalStatus": {
+      "effect:intent-0": "indeterminate",
+      "gate:did-land-intent-0": "approved"
+    },
+    "eventTypes": [
+      "effect.indeterminate",
+      "gate.opened",
+      "gate.decided",
+      "gate.claimed",
+      "gate.resumed"
+    ],
+    "attempts": 0
+  }
+}

@@ -21,6 +21,8 @@ export {
   type AuditEventType,
   type AuditInput,
   type ClaimResult,
+  type Classification,
+  type ClassifyFn,
   type Clock,
   type CompleteEffectInput,
   type EffectContext,

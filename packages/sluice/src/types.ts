@@ -60,6 +60,15 @@ export class Indeterminate extends Error {
 
 export type EffectStatus = "in_flight" | "succeeded" | "failed" | "indeterminate";
 
+/**
+ * Caller-supplied error classification (SPEC §5). Consulted when the effect
+ * function throws anything other than `Indeterminate` (which always forces
+ * 'indeterminate') or an internal abort reason (deadline / lease loss, which
+ * are indeterminate by construction — the effect may have been in flight).
+ */
+export type Classification = "retryable" | "failed" | "indeterminate";
+export type ClassifyFn = (err: unknown) => Classification;
+
 export interface StoredError {
   code: string;
   message: string;
@@ -205,6 +214,13 @@ export interface ClaimResult {
   /** "claimed" — caller owns the lease and must execute. */
   outcome: "claimed" | "exists";
   record: EffectRecord;
+  /**
+   * True when THIS claim call found an expired in_flight lease and transitioned
+   * the record to `indeterminate` (SPEC F3/F4). The discovering caller emits
+   * the `effect.indeterminate` audit event (I7 completeness) — the store never
+   * writes audit events itself.
+   */
+  expired?: boolean;
 }
 
 export interface CompleteEffectInput {
@@ -236,10 +252,31 @@ export interface SluiceStore {
     leaseMs: number;
     retentionMs: number;
     now: number;
+    /**
+     * When true, an `indeterminate` record may be re-claimed (new lease,
+     * attempt+1, back to in_flight). Only run() with the caller's explicit
+     * `onIndeterminate:'reclaim'` opt-in ever sets this (SPEC F2/F3) — and
+     * only AFTER the fingerprint check, so a conflicting key can never
+     * silently re-execute.
+     */
+    reclaimIndeterminate?: boolean;
   }): Promise<ClaimResult>;
 
   /** Persist the terminal state. Conditional on still owning the lease. */
   completeEffect(input: CompleteEffectInput & { now: number }): Promise<EffectRecord>;
+
+  /**
+   * Extend the lease. Conditional on the record still being `in_flight` and
+   * owned by `leaseOwner`; `ok:false` means the lease was lost (the record
+   * was transitioned or taken over) and the executor must stop.
+   */
+  heartbeatEffect(input: {
+    namespace: string;
+    key: string;
+    leaseOwner: string;
+    leaseMs: number;
+    now: number;
+  }): Promise<{ ok: boolean }>;
 
   readEffect(namespace: string, key: string): Promise<EffectRecord | null>;
 

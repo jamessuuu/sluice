@@ -1,0 +1,36 @@
+export const metadata = {
+  title: "Failure modes",
+  description: "F1–F12: every ugly path, named and contracted.",
+};
+
+# Failure modes
+
+Every row below is asserted by a chaos scenario ([chaos harness](/docs/chaos-harness))
+and a golden fixture, not just documented. `SluiceError` always carries
+`{ code, retryable, indeterminate, context }` — never a stack, never a driver
+string.
+
+| # | Fault | Contract |
+|---|---|---|
+| F1 | **Duplicate delivery** (2–5×, concurrent) | Exactly one claim wins; losers poll the winner's record to a terminal state (bounded by `deadlineMs`) and return `replayed`. Ledger count is 1. |
+| F2 | **Timeout, effect landed anyway** | Classified `indeterminate`. Default `onIndeterminate: 'fail'` throws `E_INDETERMINATE`, parked `indeterminate` — never reported as success, never auto-retried. `'gate'` opens a "did this land?" human gate; `'reclaim'` re-executes and is only legal when the caller has declared the downstream idempotent. |
+| F3 | **Crash after the side effect, before the result was persisted** | Lease expires; the next claim finds `in_flight` + an expired lease and transitions it to `indeterminate` — never a silent re-claim. Same three policies as F2. |
+| F4 | **Crash before the side effect** | Same `indeterminate` transition — sluice cannot distinguish F3 from F4, and says so. This is why `'fail'` is the default. |
+| F5 | **Crash mid-gate** | The gate row is durable; `resumeContext` carries what a new process needs. A new process resumes via `claimDecided` (leased), and post-decision work runs through `run()` — resumption is itself exactly-once. |
+| F6 | **Double decision / approve-reject race** | Conditional update; first writer wins; the second call returns the recorded decision (idempotent, not an error). Both attempts are recorded in the audit trail. |
+| F7 | **Retry storm** | Retry budget (10% of calls) + full-jitter backoff + circuit breaker. Exhaustion throws `E_RETRY_BUDGET` immediately. The published amplification factor on the homepage is the receipt. |
+| F8 | **Clock skew between workers** | Within `leaseMs / 2` skew, no double execution. Beyond that sluice fails **closed** to `indeterminate` (a stale owner's terminal write is refused) rather than executing twice. Stated ceiling — see [limitations](/docs/limitations). |
+| F9 | **Key reuse with different arguments** | `fingerprint` mismatch throws `E_KEY_CONFLICT` plus an audit event. Never silently returns the other call's result. |
+| F10 | **Result too large** (> `maxResultBytes`, default 64 KiB) | Stored as `resultOmitted`; replay returns `{ status: 'replayed', value: undefined, resultOmitted: true }`. The type forces every caller to handle it. |
+| F11 | **Store unavailable** | `E_STORE`; marked `indeterminate: true` if it fails *after* the claim (the effect may be in flight), `retryable: true` if before. sluice never executes the effect function without a granted claim. |
+| F12 | **Gate timeout** | `sweepTimeouts` — and any read of an expired gate — resolves it to `timed_out` and applies `onTimeout` (default `reject`, fail closed). `sluice.gate()` sugar throws `E_GATE_TIMEOUT`. |
+
+## Error codes
+
+`E_KEY_CONFLICT` `E_INDETERMINATE` `E_EFFECT_FAILED` `E_CIRCUIT_OPEN`
+`E_RETRY_BUDGET` `E_DEADLINE` `E_LEASE_LOST` `E_GATE_REJECTED`
+`E_GATE_TIMEOUT` `E_WAIT_TIMEOUT` `E_BAD_TOKEN` `E_STORE`
+`E_RESULT_TOO_LARGE` `E_CONFIG`
+
+Every one extends `SluiceError`; `retryable` and `indeterminate` are the two
+bits your code should branch on, not the message string.

@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="apps/web/public/brand/lockup-sluice.svg" alt="sluice — by Agent James" height="48">
+  <img src="apps/web/public/brand/lockup.svg" alt="sluice — by Agent James" height="48">
 </p>
 
 # sluice

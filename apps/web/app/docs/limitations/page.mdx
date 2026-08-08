@@ -1,0 +1,76 @@
+export const metadata = {
+  title: "Limitations",
+  description: "What sluice does not do, and the ceilings on what it does.",
+};
+
+# Limitations
+
+Stated in the open, because a reliability library that hides its own edges
+isn't one you should trust with a charge card.
+
+## ESM-only
+
+`@jamessuuu/sluice`, `@jamessuuu/sluice-store-postgres`, and
+`@jamessuuu/sluice-testkit` ship ESM only, Node ≥ 22. No CommonJS build. If
+your project is still on `require()`, you need `import()` or a bundler that
+handles dual interop for you — sluice does not ship a CJS fallback.
+
+## TTL is a memory horizon, not a correctness knob
+
+`retentionMs` (default 7 days) controls how long a terminal effect record
+stays around for replay/dedup purposes — **not** a promise about
+correctness. Set it longer than the longest duplicate-delivery window you
+can realistically see. After a record expires, the same idempotency key
+executes again from scratch. This is the one way sluice can be made to shoot
+you in the foot: a retention window shorter than your actual redelivery
+window silently reopens the exact hole sluice exists to close.
+
+## Hash-chain append throughput ceiling
+
+`sluice_event` appends are serialized per namespace by a cursor row lock (the
+mechanism that makes the hash chain tamper-evident with a single SQL
+statement — see [stores & migrations](/docs/stores-and-migrations)). Honest
+ceiling: roughly hundreds of events per second per namespace on Postgres.
+Fine for approval/audit-grade event volume; not a general-purpose event bus.
+If you need higher throughput than that, use more namespaces (each has an
+independent chain and cursor) rather than forcing everything through one.
+
+## Circuit breaker: eventually consistent across instances
+
+Breaker state (`sluice_circuit`) is read-through cached **1 second**
+in-process. Two instances of your service can disagree about whether a
+circuit is open for up to that long. Half-open's single-probe admission is
+still correctly serialized (compare-and-set on `half_open_owner`) even under
+this cache — the 1s window only affects how quickly an instance *notices*
+the circuit changed state, never whether two instances can both probe.
+
+## Clock-skew ceiling
+
+With skew between worker clocks **≤ `leaseMs / 2`**, there is no double
+execution — leases and gate timeouts are compared with a skew allowance.
+Beyond that ceiling sluice fails **closed** to `indeterminate` rather than
+risk a double execution (failure mode **F8**, asserted by the
+`clock-skew` chaos scenario at both "within" and "beyond" the ceiling on
+every seed). If your fleet's clocks can drift further than half a lease,
+raise `leaseMs` or fix your clock sync — don't rely on sluice to paper over
+it.
+
+## Chaos numbers are virtual-clock time, not wall-clock time
+
+Every latency figure the [chaos harness](/docs/chaos-harness) publishes (p50,
+p99 on the homepage) is measured on a `VirtualClock` — the harness
+auto-advances simulated time to the next due timer, so a scenario spanning
+hours of gate timeouts and lease expiries completes in milliseconds of real
+time. That's what makes `pnpm chaos` fast enough to run in CI on every push,
+but it means those numbers describe sluice's *scheduling* behaviour (how
+much simulated time elapses waiting on leases, backoff, and timeouts), not
+real network or database latency. Your production p99 will include actual
+I/O time on top.
+
+## Non-goals (repeated from the README, because it matters here too)
+
+No domain logic (no email/Slack senders, no incident model, no scheduler, no
+notification delivery — approvers are opaque strings). No LLM anywhere in
+core. No policy DSL, PII scanning, or "risk scoring". Not a workflow engine —
+sluice runs *inside* one step of yours, it does not orchestrate the workflow
+around it. No telemetry, ever.

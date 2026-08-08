@@ -1,0 +1,78 @@
+export const metadata = {
+  title: "Retries & breaker",
+  description: "Full-jitter backoff, a retry budget, and a per-key circuit breaker.",
+};
+
+# Retries & breaker
+
+Retries happen **inside one lease** — they never cross a claim boundary, and
+they never turn a `failed` outcome into a re-executed one. Everything below
+is what happens between the claim and the terminal write.
+
+## Backoff
+
+Full-jitter exponential backoff on retryable errors only:
+
+```
+delay = random() * min(maxDelayMs, baseDelayMs * 2 ** attempt)
+```
+
+Defaults: `baseDelayMs` 200, `maxDelayMs` 10,000, `maxAttempts` 3. `random` is
+injected (`createSluice({ random })`) — seed it in tests for a fixed delay
+sequence.
+
+`Retry-After` (seconds or an HTTP-date) is honoured when it resolves to at
+most `maxRetryAfterMs` (default 60s); beyond that sluice fails fast with the
+header value surfaced in the error context rather than sleeping past it.
+
+## Retry budget — the retry-storm defence
+
+A token bucket per `(namespace, circuitKey)` caps retries at **10% of
+calls**. Exhaustion throws `E_RETRY_BUDGET` immediately instead of adding to
+a stampede. This is the mechanism behind the published amplification number
+on the [homepage](/): under 30% injected downstream failure, sluice measures
+**≤1.5×** downstream attempts per logical intent — a CI-gated number, not a
+claim (see [chaos harness](/docs/chaos-harness)).
+
+Retries never push past `deadlineMs`; the deadline aborts the effect
+function's `AbortSignal`.
+
+## Circuit breaker
+
+Opt in per effect with `circuitKey`. Rolling window of the last 20 outcomes;
+opens at ≥50% failures once at least 5 samples exist. Open interval starts at
+30s (±20% jitter) and doubles on each consecutive open, up to a 5-minute
+ceiling.
+
+Half-open admits **exactly one probe** — enforced by a compare-and-set write
+to the store (`half_open_owner`), so two concurrent instances of your service
+cannot both send a probe at the same time. Everyone else gets an immediate
+`E_CIRCUIT_OPEN` while the probe is outstanding.
+
+```ts
+await sluice.run(
+  { key, circuitKey: "stripe-charges" },
+  (ctx) => stripe.charges.create(...)
+);
+```
+
+Breaker state is cached in-process for 1 second (one extra store read per
+second per instance, never per call) — see
+[limitations](/docs/limitations) for the eventual-consistency ceiling that
+implies across multiple instances.
+
+An **open circuit never blocks a replay** of a recorded outcome — the breaker
+protects the downstream, not the ledger. It only blocks paths that would
+*execute*: a fresh claim, an explicit reclaim, or waiting on someone else's
+in-flight lease.
+
+## Per-effect overrides
+
+```ts
+await sluice.run(
+  { key, retry: { maxAttempts: 5, maxDelayMs: 30_000 }, circuitKey: "webhook" },
+  (ctx) => postWebhook(ctx)
+);
+```
+
+`spec.retry` merges over the instance-wide policy passed to `createSluice`.

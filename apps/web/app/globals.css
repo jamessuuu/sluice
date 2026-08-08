@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind 4 config lives here (SPEC §9 — no tailwind.config.ts). Palette is
+ * BRAND-KIT.md's binding tokens: PAPER/INK/AMBER/RULE. Radius stays 0-2px,
+ * no gradients, no glow, no dark chrome — enforced by never defining a
+ * gradient/blur/shadow-glow utility below.
+ */
+@theme {
+  --color-paper: #faf7f2;
+  --color-ink: #1a1712;
+  --color-amber: #b45309;
+  --color-rule: #e4ddd3;
+
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-DEFAULT: 2px;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  * {
+    border-radius: 0;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--color-amber);
+    color: var(--color-paper);
+  }
+}

@@ -1,0 +1,73 @@
+export const metadata = {
+  title: "Quickstart",
+  description: "Wrap one side-effecting tool call in sluice.",
+};
+
+# Quickstart
+
+sluice wraps a side-effecting call in `run()`. Same idempotency key in, same
+recorded outcome out — no matter how many times the call arrives.
+
+```ts
+import { createSluice, idempotencyKey, MemoryStore } from "@jamessuuu/sluice";
+
+const sluice = createSluice({ store: new MemoryStore() });
+
+async function chargeCard(customerId: string, amountCents: number) {
+  const outcome = await sluice.run(
+    {
+      // Derive the key from INTENT, never from the transport attempt.
+      // See "Idempotency keys" for why this is the whole ballgame.
+      key: idempotencyKey({ tool: "charge_card", customerId, amountCents }),
+      fingerprint: { customerId, amountCents },
+      leaseMs: 30_000,
+      deadlineMs: 60_000,
+    },
+    async (ctx) => {
+      const charge = await stripe.charges.create(
+        { customer: customerId, amount: amountCents },
+        { idempotencyKey: ctx.effectId } // belt + suspenders at the transport, too
+      );
+      return { chargeId: charge.id };
+    }
+  );
+
+  if (outcome.status === "executed") {
+    // fn ran; this call did the charging.
+  } else {
+    // outcome.status === "replayed" — someone already did this. `outcome.value`
+    // is the recorded result (unless resultOmitted — see the F10 row in
+    // "Failure modes").
+  }
+  return outcome;
+}
+```
+
+Call `chargeCard` again with the same `customerId`/`amountCents` — from a retry, a
+duplicate webhook delivery, a redelivered queue message — and the card is charged
+**once**. The second call gets `{ status: "replayed", value: { chargeId: "..." } }`
+without re-running the effect function at all.
+
+## What just happened
+
+1. `run()` atomically **claims** `(namespace, key)` in the store. Exactly one
+   caller wins the claim; concurrent duplicates wait for the winner's outcome
+   and replay it.
+2. The effect function runs under a **lease** (default 30s, heartbeat at
+   `leaseMs / 3`) and a whole-run **deadline** (default 60s, retries included).
+3. The result is persisted and the outcome returned. A caller that throws gets
+   classified `retryable` / `failed` / `indeterminate` (see
+   [Failure modes](/docs/failure-modes)) and retried, failed, or parked
+   accordingly.
+
+## Next
+
+- [Idempotency keys](/docs/idempotency-keys) — the one rule that makes any of
+  this work.
+- [Retries & breaker](/docs/retries-and-breaker) — what happens inside one
+  lease when the downstream is unreliable.
+- [Gates](/docs/gates) — durable human approval for the calls you don't want
+  to auto-retry at all.
+- Try it live: [`/playground`](/playground) runs this exact core in your
+  browser with duplicate/timeout/error sliders, and [`/gate`](/gate) is a
+  60-second walkthrough of a gate surviving a real page reload.

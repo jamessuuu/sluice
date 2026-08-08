@@ -1,0 +1,75 @@
+export const metadata = {
+  title: "Idempotency keys",
+  description: "Derive from intent, never from the transport attempt.",
+};
+
+# Idempotency keys
+
+**The doctrine, first, because everything else in this doc is a footnote to
+it:** derive an idempotency key from the caller's **intent** — `{ tool, args,
+actor, runId }` — and **never** from anything the transport attaches to one
+particular attempt at delivering that intent (a message id, a delivery id, a
+timestamp, a retry counter).
+
+> A key that changes on retry is not an idempotency key.
+
+That sentence is the entire failure mode. If your key includes a queue
+message id, then a redelivery of the *same* logical intent gets a *different*
+key, sluice sees a brand-new effect, and it executes again — which is exactly
+the double-charge sluice exists to prevent. The bug is invisible in
+development (nothing redelivers on your laptop) and shows up in production
+the first time a queue, a webhook sender, or an agent's own retry loop
+redelivers the same job.
+
+## The helper
+
+```ts
+import { idempotencyKey } from "@jamessuuu/sluice";
+
+const key = idempotencyKey({
+  tool: "send_email",
+  actor: "agent-42",
+  runId: "run_8f21",
+  args: { to: "customer@example.com", template: "receipt" },
+});
+```
+
+`idempotencyKey(parts)` is `sha256(canonicalJson(parts))` — canonical meaning
+keys are sorted at every depth, so `{ a: 1, b: 2 }` and `{ b: 2, a: 1 }`
+produce the identical key. Two calls with the same intent, constructed in any
+field order, collapse to one key.
+
+## What belongs in the key
+
+| Include | Why |
+|---|---|
+| `tool` | Different tools with the same args are different intents. |
+| `args` (the ones that determine the side effect) | Two different amounts are two different charges. |
+| `actor` / `runId` | Scopes the key so two different agents (or two different runs of the same agent) don't collide on a coincidentally-identical action. |
+
+## What does **not** belong in the key
+
+| Exclude | Why |
+|---|---|
+| A queue/message/delivery id | Changes every redelivery of the same intent — see above. |
+| A timestamp | Changes every retry. |
+| A request-scoped trace id | Same failure as the message id. |
+| Anything that isn't stable across retries | If it isn't stable, it isn't part of the intent. |
+
+## `fingerprint` is the seatbelt, not the key
+
+`fingerprint` is a *separate*, optional field on `EffectSpec`. sluice hashes
+it and compares it against whatever fingerprint the key was first seen with —
+a mismatch throws `E_KEY_CONFLICT` instead of silently replaying the wrong
+result (see failure mode **F9**). Put the same `args` you used to build the
+key into `fingerprint`, and a key that gets reused with different arguments
+(a bug, a hash collision, a copy-pasted key) fails loudly instead of quietly
+returning someone else's charge.
+
+```ts
+await sluice.run(
+  { key: idempotencyKey({ tool: "charge_card", customerId, amountCents }),
+    fingerprint: { customerId, amountCents } },
+  (ctx) => charge(customerId, amountCents)
+);
+```

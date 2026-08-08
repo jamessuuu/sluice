@@ -1,0 +1,100 @@
+export const metadata = {
+  title: "Gates",
+  description: "Durable human approval that survives a process crash.",
+};
+
+# Gates
+
+A gate is a durable "may I do this?" checkpoint. It survives the process
+that opened it dying, and the side effect it guards runs through `run()` on
+resume — so resumption is itself exactly-once. Try the full walkthrough at
+[`/gate`](/gate); it completes in under 30 seconds and survives a real page
+reload.
+
+## Opening one
+
+```ts
+const gate = await sluice.gates.open({
+  key: `publish-${postId}`,
+  action: { kind: "tool_call", tool: "publish_post", args: { postId } },
+  presentation: { title: `Publish "${title}"?`, summary: "Goes live immediately." },
+  requester: { actor: "agent-42", runId },
+  approvers: ["editor@example.com"],
+  timeoutMs: 15 * 60_000, // REQUIRED — there is no unbounded gate
+  onTimeout: "reject", // default; fail closed
+  resumeContext: { postId, runId }, // what a NEW process needs to continue
+});
+```
+
+Opening is idempotent on `(namespace, key)` — opening the same gate twice
+returns the existing row instead of creating a second one.
+
+## The two ways to wait
+
+**Short wait, same process** — `sluice.gate()` sugar (open + poll):
+
+```ts
+try {
+  const approved = await sluice.gate(gateSpec, { maxWaitMs: 5 * 60_000 });
+  await sluice.run({ key: publishKey }, () => publish(postId));
+} catch (err) {
+  // E_GATE_REJECTED or E_GATE_TIMEOUT
+}
+```
+
+Polling backs off 1s → ×1.5 → capped at 60s. **Waits longer than ~5 minutes
+must not poll in-process** — see the next section.
+
+**Long wait, new process** — open and return; resume later:
+
+```ts
+// Step 1: open and return control immediately.
+await sluice.gates.open(gateSpec);
+
+// Step 2 (a scheduled poller — GitHub Actions on a 5-minute cron is the
+// reference deployment; see "stores & migrations" for why Vercel cron
+// doesn't fit): claim decided-but-unprocessed gates and run the post-
+// decision work through run(), so it's exactly-once across crashed resumers.
+const claims = await sluice.gates.claimDecided({ limit: 10 });
+for (const claim of claims) {
+  if (claim.gate.status === "approved") {
+    const { postId } = claim.gate.resumeContext as { postId: string };
+    await sluice.run({ key: `publish-${postId}` }, () => publish(postId));
+  }
+  await claim.ack();
+}
+```
+
+Why the split: `waitFor` is convenient but it's still a poll loop holding a
+process open. On Neon's free tier a tight poll keeps compute from scaling to
+zero and burns the CU-hour budget — a single 24-hour gate polled every 5s
+would cost roughly 24 CU-hours on its own. A webhook/push dispatcher is
+explicitly out of scope for sluice (it's an application concern); sluice
+guarantees the decision is durable and readable, not that it's pushed to
+you.
+
+## Deciding
+
+```ts
+await sluice.gates.decide({ id: gate.id, decision: "approve", decidedBy: "editor@example.com" });
+```
+
+Deciding is a conditional update (`WHERE status = 'pending'`) — **first
+writer wins**, and a second `decide()` call on an already-decided gate
+returns the recorded decision instead of throwing. Both attempts are
+recorded in the audit trail.
+
+## Approval tokens (email-a-link approvals)
+
+```ts
+const sluiceWithTokens = createSluice({ store, approvalSecret: process.env.GATE_SECRET });
+const token = sluiceWithTokens.gates.mintToken(gate.id, { ttlMs: 24 * 60 * 60_000 });
+// mail a link containing `token` — decide() verifies it, single-use, timing-safe.
+await sluiceWithTokens.gates.decide({ id: gate.id, decision: "approve", decidedBy: "link", token });
+```
+
+`mintToken` issues `base64url(gateId.exp.nonce).mac` (HMAC-SHA256). The nonce
+is burned by the same conditional update that records the decision;
+`E_BAD_TOKEN` on any mismatch, and the error never says which check failed.
+This is the *only* auth primitive sluice has — approvers themselves are
+opaque strings; sluice performs no identity resolution.

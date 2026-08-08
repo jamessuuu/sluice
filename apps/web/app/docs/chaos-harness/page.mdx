@@ -1,0 +1,77 @@
+export const metadata = {
+  title: "Chaos harness",
+  description: "The proof artifact: no model API key required.",
+};
+
+# Chaos harness
+
+Every claim on the [homepage](/) traces back to `pnpm chaos` — a deterministic
+harness in `@jamessuuu/sluice-testkit` that runs 9 fault scenarios × 10 seeds
+against the real core, asserts 8 invariants on every single run, and writes
+the numbers to `chaos/results/latest.json`. Nothing about it needs a model
+API key: the "agent" in every scenario is a scripted sequence of `run()` /
+`gates.*` calls, and the fault injection is a seeded PRNG, not an LLM.
+
+## The building blocks
+
+- **`FakeTransport`** — the observable downstream. Every call is one
+  attempt; every attempt that *commits* appends to the **ledger**. The
+  ledger is what "exactly-once" is measured against — never sluice's
+  internals.
+- **`FaultPlan`** — a seeded (mulberry32), declarative fault schedule. Every
+  decision is a pure function of `(seed, label)`, so a scenario replays
+  identically and the fuzzer can shrink a failing plan without shifting
+  unrelated draws.
+- **`VirtualClock`** — every sleep, backoff, lease expiry, and gate timeout
+  in sluice reads from an injected `Clock`. The harness auto-advances virtual
+  time to the next due timer whenever the real event loop drains, so a
+  scenario spanning hours of simulated time runs in milliseconds of wall
+  time.
+- **`CrashController`** — kills a simulated process at a chosen store call
+  (before or after it lands), the way a real crash looks to survivors:
+  writes scheduled before the crash landed; everything after simply never
+  happens.
+
+All four are isomorphic-pure (no `node:*` imports) — [`/playground`](/playground)
+imports the exact same classes into a Web Worker.
+
+## The 9 scenarios
+
+`duplicate-delivery` · `timeout-then-success` · `crash-mid-effect` ·
+`crash-before-effect` · `crash-mid-gate` · `retry-storm` · `clock-skew` ·
+`slow-downstream` · `out-of-order-decision` — each one exercises a specific
+row of the [failure-mode table](/docs/failure-modes).
+
+## The 8 invariants (checked on every scenario, every seed)
+
+| # | Invariant |
+|---|---|
+| I1 | Ledger entries per logical intent ≤ 1, always. |
+| I2 | Reported success ⇒ the ledger entry actually exists. |
+| I3 | `indeterminate` outcomes never report success and never silently re-execute. |
+| I4 | Every gate reaches a terminal state within `timeoutMs` + slack. |
+| I5 | Post-decision work runs exactly once across N crashed resumers. |
+| I6 | Retry amplification ≤ 1.5× under 30% injected failure (CI gate). |
+| I7 | Every terminal effect has a matching terminal audit event; the hash chain verifies. |
+| I8 | Nothing leaves a terminal state except retention. |
+
+## Reproduce it yourself
+
+```bash
+git clone https://github.com/jamessuuu/sluice
+cd sluice && pnpm install
+pnpm chaos        # writes chaos/results/latest.json + chaos/RESULTS.md
+```
+
+CI regenerates the same numbers on every push and fails if the committed
+README table or `chaos/RESULTS.md` differ (`node scripts/chaos-report.mjs
+--check`) — the numbers on this site, in the README, and in the repo cannot
+drift from each other, because they're one source rendered three times.
+
+## Golden set + fuzz
+
+24 fixed fault-plan fixtures with expected outcome traces, replayed with a
+zero-tolerance bar (24/24 — the system is deterministic, so a percentage
+would be dishonest). A second gate runs 200 randomized seeds and asserts zero
+I1–I8 violations; a failing seed is auto-minimized (the fault plan is
+shrunk) and printed ready to pin as golden #25.

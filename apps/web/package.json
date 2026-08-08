@@ -8,10 +8,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "predev": "node scripts/generate-og.mjs",
+    "predev": "pnpm run build:deps && node scripts/generate-og.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/generate-og.mjs",
+    "prebuild": "pnpm run build:deps && node scripts/generate-og.mjs",
     "build": "next build",
+    "build:deps": "pnpm --filter @jamessuuu/sluice --filter @jamessuuu/sluice-testkit run build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",

@@ -1,3 +1,4 @@
+import { chainHash } from "./hash-chain.js";
 import type {
   AuditEvent,
   CircuitRecord,
@@ -11,6 +12,24 @@ import type {
 import { SluiceError } from "./types.js";
 
 /**
+ * Plain-JSON snapshot of a MemoryStore's entire contents (M9). Every field is
+ * `Map`/array data already made of JSON-safe records (SPEC types are all
+ * `Json`-shaped) — `JSON.stringify(store.exportState())` round-trips through
+ * `sessionStorage`/`localStorage`/a file exactly, which is what lets the
+ * `/gate` demo (and the CLI's ephemeral mode) survive a real process
+ * restart: construct `new MemoryStore(savedState)` and continue.
+ */
+export interface MemoryStoreState {
+  effects: [string, EffectRecord][];
+  circuits: [string, CircuitRecord][];
+  gates: [string, GateRecord][];
+  gateIds: [string, string][];
+  events: AuditEvent[];
+  seqs: [string, number][];
+  heads: [string, string | null][];
+}
+
+/**
  * In-memory SluiceStore. Used by tests, the browser playground, and the CLI's
  * ephemeral mode. Same conformance suite as the Postgres store (M5/M6).
  *
@@ -19,13 +38,39 @@ import { SluiceError } from "./types.js";
  * Postgres store gets from single-statement operations.
  */
 export class MemoryStore implements SluiceStore {
-  private readonly effects = new Map<string, EffectRecord>();
-  private readonly circuits = new Map<string, CircuitRecord>();
+  private readonly effects: Map<string, EffectRecord>;
+  private readonly circuits: Map<string, CircuitRecord>;
   /** By id; the (namespace, key) unique index lives in gateIds. */
-  private readonly gates = new Map<string, GateRecord>();
-  private readonly gateIds = new Map<string, string>();
-  private readonly events: AuditEvent[] = [];
-  private readonly seqs = new Map<string, number>();
+  private readonly gates: Map<string, GateRecord>;
+  private readonly gateIds: Map<string, string>;
+  private readonly events: AuditEvent[];
+  private readonly seqs: Map<string, number>;
+  /** Per-namespace chain head (SPEC §3 sluice_cursor) — null until the first event. */
+  private readonly heads: Map<string, string | null>;
+
+  /** `new MemoryStore()` for a fresh store, or `new MemoryStore(exportState())` to resume one. */
+  constructor(state?: MemoryStoreState) {
+    this.effects = new Map(state?.effects ?? []);
+    this.circuits = new Map(state?.circuits ?? []);
+    this.gates = new Map(state?.gates ?? []);
+    this.gateIds = new Map(state?.gateIds ?? []);
+    this.events = state?.events !== undefined ? [...state.events] : [];
+    this.seqs = new Map(state?.seqs ?? []);
+    this.heads = new Map(state?.heads ?? []);
+  }
+
+  /** Plain-JSON snapshot of every record this store holds — see `MemoryStoreState`. */
+  exportState(): MemoryStoreState {
+    return {
+      effects: [...this.effects],
+      circuits: [...this.circuits],
+      gates: [...this.gates],
+      gateIds: [...this.gateIds],
+      events: [...this.events],
+      seqs: [...this.seqs],
+      heads: [...this.heads],
+    };
+  }
 
   /**
    * Composite map key. NUL as separator (it cannot appear in SQL text
@@ -327,6 +372,13 @@ export class MemoryStore implements SluiceStore {
     return Promise.resolve({ ok: true, record: cloneCircuit(updated) });
   }
 
+  /**
+   * Hash-chained append (SPEC §3 / M9): mirrors the exact scheme
+   * `sluice-store-postgres` computes in SQL — `hash = sha256((prevHash ?? "")
+   * + canonicalPayload)`, chained per namespace via `this.heads`. Same
+   * algorithm as `chainHash` (hash-chain.ts), so a fixture appended here and
+   * one appended through Postgres are byte-identical for the same events.
+   */
   appendEvents(
     events: Omit<AuditEvent, "id" | "seq" | "prevHash" | "hash">[]
   ): Promise<AuditEvent[]> {
@@ -334,12 +386,15 @@ export class MemoryStore implements SluiceStore {
     for (const e of events) {
       const seq = (this.seqs.get(e.namespace) ?? 0) + 1;
       this.seqs.set(e.namespace, seq);
+      const prevHash = this.heads.get(e.namespace) ?? null;
+      const hash = chainHash(prevHash, e);
+      this.heads.set(e.namespace, hash);
       const full: AuditEvent = {
         ...e,
         id: `evt_${e.namespace}_${String(seq)}`,
         seq,
-        prevHash: null, // hash chain lands in M9
-        hash: null,
+        prevHash,
+        hash,
       };
       this.events.push(full);
       appended.push(full);

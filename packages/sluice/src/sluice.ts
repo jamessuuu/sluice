@@ -1,5 +1,6 @@
 import { CircuitBreakers, DEFAULT_CIRCUIT_POLICY, type Admission } from "./circuit.js";
 import { createGates, type GatesApi } from "./gates.js";
+import { verifyEvents, type VerifyEventsResult } from "./hash-chain.js";
 import { canonicalJson, type Json } from "./json.js";
 import {
   backoffDelayMs,
@@ -39,6 +40,8 @@ const DEFAULT_MAX_RESULT_BYTES = 65_536;
 const MAX_KEY_LENGTH = 200;
 /** Poll interval while waiting for another owner's in-flight effect (F1). */
 const WAIT_POLL_MS = 25;
+/** audit.export()/audit.verify() page size (SPEC §5) — one readEvents call per page. */
+const AUDIT_PAGE_SIZE = 500;
 
 export interface SluiceOptions {
   store: SluiceStore;
@@ -79,6 +82,14 @@ export interface Sluice {
   readonly audit: {
     append(e: AuditInput): Promise<AuditEvent>;
     since(cursor: { namespace: string; seq: number }, limit?: number): Promise<AuditEvent[]>;
+    /** Paginated export of a namespace's full hash-chained event log (SPEC §5). */
+    export(namespace: string, o?: { pageSize?: number }): AsyncIterable<AuditEvent>;
+    /**
+     * Recompute and verify a namespace's hash chain via the store (SPEC §5).
+     * Delegates to the pure `verifyEvents` per page, so store-backed verify
+     * and the browser's store-free verify are the same algorithm.
+     */
+    verify(namespace: string, o?: { pageSize?: number }): Promise<VerifyEventsResult>;
   };
 }
 
@@ -872,6 +883,65 @@ export function createSluice(options: SluiceOptions): Sluice {
     };
   }
 
+  /** Paginated export over `store.readEvents` — one page per round trip. */
+  async function* exportEvents(
+    ns: string,
+    o?: { pageSize?: number }
+  ): AsyncGenerator<AuditEvent> {
+    const pageSize = o?.pageSize ?? AUDIT_PAGE_SIZE;
+    let sinceSeq = 0;
+    for (;;) {
+      let page: AuditEvent[];
+      try {
+        page = await store.readEvents(ns, sinceSeq, pageSize);
+      } catch (cause) {
+        throw wrapStoreError(cause, "readEvents failed during audit.export");
+      }
+      if (page.length === 0) return;
+      for (const e of page) yield e;
+      const last = page[page.length - 1];
+      if (last === undefined || page.length < pageSize) return;
+      sinceSeq = last.seq;
+    }
+  }
+
+  /**
+   * Store-backed chain verification: read the namespace's events page by
+   * page and delegate each page to the pure `verifyEvents`, chaining
+   * `prevHead` across pages — identical algorithm to the browser's
+   * store-free verify (hash-chain.ts), just fed by a live store instead of
+   * an exported fixture.
+   */
+  async function verifyAudit(
+    ns: string,
+    o?: { pageSize?: number }
+  ): Promise<VerifyEventsResult> {
+    const pageSize = o?.pageSize ?? AUDIT_PAGE_SIZE;
+    let sinceSeq = 0;
+    let prevHead: string | null = null;
+    let totalChecked = 0;
+    for (;;) {
+      let page: AuditEvent[];
+      try {
+        page = await store.readEvents(ns, sinceSeq, pageSize);
+      } catch (cause) {
+        throw wrapStoreError(cause, "readEvents failed during audit.verify");
+      }
+      if (page.length === 0) break;
+      const result = verifyEvents(page, prevHead);
+      if (!result.ok) {
+        return { ok: false, brokenAt: totalChecked + (result.brokenAt ?? 0), checked: totalChecked + result.checked };
+      }
+      totalChecked += result.checked;
+      const last = page[page.length - 1];
+      if (last === undefined) break;
+      prevHead = last.hash;
+      if (page.length < pageSize) break;
+      sinceSeq = last.seq;
+    }
+    return { ok: true, checked: totalChecked };
+  }
+
   /** sluice.gate() sugar: open + waitFor; only an approval returns (SPEC §5). */
   async function gateSugar(
     spec: GateSpec,
@@ -907,6 +977,8 @@ export function createSluice(options: SluiceOptions): Sluice {
     audit: {
       append: emit,
       since: (cursor, limit) => store.readEvents(cursor.namespace, cursor.seq, limit ?? 100),
+      export: exportEvents,
+      verify: verifyAudit,
     },
   };
 }

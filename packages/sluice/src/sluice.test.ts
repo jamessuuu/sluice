@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { verifyEvents } from "./hash-chain.js";
 import { MemoryStore } from "./memory-store.js";
 import { createSluice, idempotencyKey } from "./sluice.js";
 import { Indeterminate, SluiceError } from "./types.js";
@@ -147,6 +148,56 @@ describe("run() — the walking skeleton (M1)", () => {
     await expect(
       sluice.run({ key: "x".repeat(201) }, () => Promise.resolve(null))
     ).rejects.toMatchObject({ code: "E_CONFIG" });
+  });
+});
+
+describe("audit.export / audit.verify (M9 hash-chained audit)", () => {
+  it("export() yields the full chained log, paginated", async () => {
+    const { sluice } = setup();
+    for (let i = 0; i < 5; i++) {
+      await sluice.run({ key: `k-exp-${String(i)}` }, () => Promise.resolve({ i }));
+    }
+    const collected = [];
+    for await (const e of sluice.audit.export("test", { pageSize: 2 })) collected.push(e);
+    // One "effect.claimed" + one "effect.succeeded" per run() = 10 events.
+    expect(collected).toHaveLength(10);
+    expect(collected.map((e) => e.seq)).toEqual(Array.from({ length: 10 }, (_, i) => i + 1));
+    expect(collected[0]?.prevHash).toBeNull();
+  });
+
+  it("verify() reports ok:true on an untampered chain", async () => {
+    const { sluice } = setup();
+    for (let i = 0; i < 4; i++) {
+      await sluice.run({ key: `k-ver-${String(i)}` }, () => Promise.resolve({ i }));
+    }
+    const result = await sluice.audit.verify("test", { pageSize: 3 });
+    expect(result).toEqual({ ok: true, checked: 8 });
+  });
+
+  it("verify() finds a break introduced by a raw store tamper", async () => {
+    const { store, sluice } = setup();
+    for (let i = 0; i < 4; i++) {
+      await sluice.run({ key: `k-tamper-${String(i)}` }, () => Promise.resolve({ i }));
+    }
+    // Reach past the public store surface — a MemoryStore-internal tamper is
+    // the in-process equivalent of hash-chain.test.ts's raw-SQL UPDATE.
+    const internal = store as unknown as { events: { data: Record<string, unknown> }[] };
+    const target = internal.events[3];
+    if (target === undefined) throw new Error("fixture too short");
+    target.data = { tampered: true };
+    const result = await sluice.audit.verify("test");
+    expect(result.ok).toBe(false);
+    expect(result.brokenAt).toBe(3);
+  });
+
+  it("export() output round-trips through the pure verifyEvents", async () => {
+    const { sluice } = setup();
+    for (let i = 0; i < 3; i++) {
+      await sluice.run({ key: `k-rt-${String(i)}` }, () => Promise.resolve({ i }));
+    }
+    const collected = [];
+    for await (const e of sluice.audit.export("test")) collected.push(e);
+    expect(verifyEvents(collected)).toEqual({ ok: true, checked: collected.length });
   });
 });
 

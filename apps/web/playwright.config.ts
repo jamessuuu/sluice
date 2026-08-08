@@ -24,9 +24,10 @@ export default defineConfig({
     // Inlined rather than `pnpm build && pnpm start -- --port N`: pnpm's
     // arg-passthrough for a zero-arg script ("start": "next start") does not
     // reliably forward `-- --port N` as flags to the underlying `next`
-    // binary. Calling next directly (still preceded by the same OG-generation
-    // prebuild step `pnpm build` would otherwise run) is unambiguous.
-    command: `node scripts/generate-og.mjs && next build && next start -p ${String(PORT)}`,
+    // binary. Calling next directly (preceded by the same build:deps +
+    // OG-generation steps `pnpm build`'s prebuild hook would otherwise run —
+    // see next.config.ts's dist-alias deviation note) is unambiguous.
+    command: `pnpm run build:deps && node scripts/generate-og.mjs && next build && next start -p ${String(PORT)}`,
     url: `http://127.0.0.1:${String(PORT)}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

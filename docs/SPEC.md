@@ -282,7 +282,9 @@ and Postgres, and **that is the contract for any future adapter**.
 **Auth model.** The library has none by design (approvers are opaque strings) except one
 primitive: `mintToken` issues a single-use HMAC-SHA256 approval token
 (`base64url(gateId.exp.nonce).mac`) so an emailed link can decide without a session.
-Timing-safe compare, nonce burned by the same conditional update that records the decision,
+Timing-safe compare; single-use falls out of the gate's own state machine — the same
+conditional update that records the decision (`WHERE status='pending'`) is what makes a
+second use a no-op, so there is no nonce table to consult and the path stays one statement.
 `E_BAD_TOKEN` on any mismatch. **The hosted demo has no server-side write path at all**
 (§7) — the quality bar "no unauthenticated write path, ever" is met structurally.
 

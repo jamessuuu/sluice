@@ -63,7 +63,7 @@ Zero runtime dependencies. No LLM anywhere. No telemetry.
 Baseline workload: 200 intents delivered 2–5× each under 30.0% injected failure (15.0% errors + 15.0% landed-but-timed-out).
 Retry amplification under 30.0% injected failure: **0.88×** downstream attempts per intent (CI gate ≤ 1.5).
 `run()` latency under fault injection: p50 0 ms · p99 60,000 ms — **virtual clock time, not wall clock**.
-Run shape: 9 scenarios × 10 seeds · 740 intents · 1,014 deliveries · git `a5da1e4`.
+Run shape: 9 scenarios × 10 seeds · 740 intents · 1,014 deliveries · git `debf2ed`.
 Regenerate with `pnpm chaos` — full tables in [chaos/RESULTS.md](chaos/RESULTS.md).
 <!-- chaos:end -->
 

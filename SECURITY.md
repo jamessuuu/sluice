@@ -25,8 +25,8 @@ decide a gate without a session. Threats considered and how they're closed:
 
 | Threat | Mitigation |
 |---|---|
-| Token guessing / brute force | 256-bit HMAC over an 8-byte random nonce plus the gate id and expiry — not feasible to forge or guess. |
-| Token replay (the link is used twice, or forwarded after use) | The nonce is burned by the **same conditional update** that records the decision (`decideGate`, `WHERE status = 'pending'`) — a second use with the same token finds the gate already decided and returns the recorded decision, it cannot re-decide. |
+| Token guessing / brute force | 256-bit HMAC over a 16-byte random nonce plus the gate id and expiry — not feasible to forge or guess. |
+| Token replay (the link is used twice, or forwarded after use) | Single use comes from the **gate's own state machine**, not from a nonce lookup: `decideGate`'s conditional update is `WHERE status = 'pending'`, so a second use of the same token finds the gate already decided and returns the recorded decision rather than re-deciding. The nonce exists to make the token unguessable, not to be checked against a store — there is deliberately no nonce table to keep the whole path a single statement. |
 | Timing attack on MAC comparison | `timingSafeEqualHex` — constant-time comparison, not `===`. |
 | Expired token reuse | Expiry (`exp`) is checked; `E_BAD_TOKEN` on any failure — the error deliberately does not distinguish "expired" from "forged" from "malformed", so an attacker learns nothing from the response shape. |
 | Token leakage via `approvalSecret` compromise | `approvalSecret` is your process's own secret (`createSluice({ approvalSecret })`) — sluice never stores it, logs it, or transmits it. Rotate it like any other application secret; existing outstanding tokens signed with the old secret stop verifying immediately. |

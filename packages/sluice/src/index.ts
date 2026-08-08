@@ -10,7 +10,7 @@
  * + the pure store-free verifyEvents). See docs/SPEC.md.
  */
 
-export const SLUICE_VERSION = "0.1.0-alpha.0";
+export const SLUICE_VERSION = "1.0.0-rc.1";
 
 export { canonicalJson, type Json } from "./json.js";
 export { sha256Hex } from "./sha256.js";

@@ -19,6 +19,7 @@ export default tseslint.config(
             "apps/*/*.mjs",
             "apps/*/scripts/*.mjs",
             "apps/*/playwright.config.ts",
+            "packages/*/bin/*.mjs",
           ],
         },
         tsconfigRootDir: import.meta.dirname,
@@ -34,7 +35,12 @@ export default tseslint.config(
   },
   {
     files: ["packages/sluice/src/**/*.ts"],
-    ignores: ["packages/sluice/src/**/*.test.ts"],
+    // The CLI (M9) is a Node-only entry point — SPEC §2's repo layout ships
+    // it from THIS package ("core + MemoryStore + CLI") but it is never
+    // imported by the browser bundle (apps/web only imports the package's
+    // "." export), so the zero-node-builtins boundary below — which exists
+    // specifically for Web Worker compatibility — does not apply to it.
+    ignores: ["packages/sluice/src/**/*.test.ts", "packages/sluice/src/cli/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -43,7 +49,7 @@ export default tseslint.config(
             {
               group: ["node:*"],
               message:
-                "SPEC §4 boundary: @jamessuuu/sluice core must not import node builtins (browser Web Worker compatibility + zero-dep guarantee). Inject capabilities via createSluice options. (Tests are exempt; the build tsconfig enforces types:[] on shipped code.)",
+                "SPEC §4 boundary: @jamessuuu/sluice core must not import node builtins (browser Web Worker compatibility + zero-dep guarantee). Inject capabilities via createSluice options. (Tests and src/cli/** are exempt; the build tsconfig enforces types:[] on shipped code.)",
             },
           ],
         },

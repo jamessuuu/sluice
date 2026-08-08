@@ -1,6 +1,6 @@
 {
   "name": "@jamessuuu/sluice-store-postgres",
-  "version": "0.1.0-alpha.0",
+  "version": "1.0.0-rc.1",
   "description": "Postgres/Neon store adapter for @jamessuuu/sluice (Drizzle, forward-only migrations, single-statement operations).",
   "license": "MIT",
   "author": "James Lorenz Santos",

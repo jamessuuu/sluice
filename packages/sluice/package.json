@@ -1,6 +1,6 @@
 {
   "name": "@jamessuuu/sluice",
-  "version": "0.1.0-alpha.0",
+  "version": "1.0.0-rc.1",
   "description": "Exactly-once side effects for agent tool calls, plus human approval gates that survive a process crash.",
   "license": "MIT",
   "author": "James Lorenz Santos",
@@ -13,6 +13,9 @@
   "type": "module",
   "engines": {
     "node": ">=22"
+  },
+  "bin": {
+    "sluice": "./bin/sluice.mjs"
   },
   "exports": {
     ".": "./src/index.ts"
@@ -28,12 +31,13 @@
   },
   "files": [
     "dist",
+    "bin",
     "README.md"
   ],
   "sideEffects": false,
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.build.json --noEmit",
-    "build": "tsc -p tsconfig.build.json"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.cli.build.json --noEmit",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.cli.build.json"
   },
   "keywords": [
     "idempotency",

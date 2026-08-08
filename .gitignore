@@ -14,3 +14,4 @@ apps/web/public/og.png
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/blob-report/
+.sluice/

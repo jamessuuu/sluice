@@ -1,0 +1,88 @@
+name: release
+
+# SPEC §2/§10 M9: manual semver bump + `pnpm -r publish --access public
+# --provenance` from a tag-triggered Actions workflow. Hand-written
+# CHANGELOG (Keep a Changelog) — no changesets; three packages, one
+# maintainer, 2h/week (SPEC §2).
+#
+# Flow: bump versions + CHANGELOG in a normal PR -> merge -> tag the merge
+# commit `vX.Y.Z` -> push the tag -> this workflow runs the same five gates
+# as CI (so a release can never ship on a red build) and publishes.
+#
+# NOT run as part of this build task — no tag has been pushed.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  id-token: write # OIDC — required for --provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: sluice
+          POSTGRES_PASSWORD: sluice
+          POSTGRES_DB: sluice_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://sluice:sluice@localhost:5432/sluice_test
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @jamessuuu/sluice-web exec playwright install --with-deps chromium
+
+      # The identical five stages as ci.yml — a release can never skip a gate
+      # CI itself doesn't run. Kept in lockstep deliberately, not DRY'd into
+      # a shared composite action, so either file can be read on its own.
+      - name: typecheck
+        run: pnpm typecheck
+      - name: lint
+        run: pnpm lint
+      - name: migrate postgres store (CI service)
+        run: pnpm --filter @jamessuuu/sluice-store-postgres run db:migrate
+      - name: unit
+        run: pnpm test -- --project unit
+      - name: e2e-smoke
+        run: pnpm test:e2e
+      - name: eval
+        run: pnpm test -- --project eval
+      - name: chaos-drift
+        run: node scripts/chaos-report.mjs --check
+      - name: brand-drift
+        run: |
+          pnpm brand
+          git diff --exit-code -- apps/web/public/brand
+
+      # Publish-shape guards (same as CI) — belt and suspenders right before
+      # the tarballs that pass these checks are the ones that get published.
+      - name: build
+        run: pnpm build
+      - name: pack-check
+        run: pnpm ci:pack-check
+
+      # Versions are bumped by hand in the PR that this tag points at
+      # (CHANGELOG.md updated in the same commit) — this workflow publishes
+      # exactly what's checked in, it does not compute or write a version.
+      - name: publish
+        run: pnpm -r publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

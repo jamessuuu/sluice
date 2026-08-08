@@ -6,7 +6,7 @@
  * CI (SPEC §8).
  */
 
-export const SLUICE_STORE_POSTGRES_VERSION = "0.1.0-alpha.0";
+export const SLUICE_STORE_POSTGRES_VERSION = "1.0.0-rc.1";
 
 export { createPostgresStore, type AnyPgDatabase } from "./store.js";
 export * as schema from "./schema.js";

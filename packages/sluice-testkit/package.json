@@ -1,6 +1,6 @@
 {
   "name": "@jamessuuu/sluice-testkit",
-  "version": "0.1.0-alpha.0",
+  "version": "1.0.0-rc.1",
   "description": "Deterministic chaos harness for @jamessuuu/sluice: fake transport, fault plans, virtual clock, crash controller, store conformance suite.",
   "license": "MIT",
   "author": "James Lorenz Santos",

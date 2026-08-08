@@ -8,6 +8,28 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # M6 (SPEC §8): "unit... incl. runStoreConformance against MemoryStore
+    # AND a postgres:17 service container (CI never needs Neon)." This is
+    # the real enforcement — packages/sluice-store-postgres/src/store.real.test.ts
+    # runs the identical SluiceStore conformance suite against this service
+    # (gated on DATABASE_URL) alongside the always-on pglite run in
+    # store.conformance.test.ts, which needs neither Docker nor this service.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: sluice
+          POSTGRES_PASSWORD: sluice
+          POSTGRES_DB: sluice_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://sluice:sluice@localhost:5432/sluice_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -23,6 +45,8 @@ jobs:
         run: pnpm typecheck
       - name: lint
         run: pnpm lint
+      - name: migrate postgres store (CI service)
+        run: pnpm --filter @jamessuuu/sluice-store-postgres run db:migrate
       - name: unit
         run: pnpm test -- --project unit
       - name: e2e-smoke

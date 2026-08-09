@@ -35,6 +35,60 @@ function eq(actual: unknown, expected: unknown, msg: string): void {
   if (a !== b) throw new Error(`${msg}: expected ${b}, got ${a}`);
 }
 
+/**
+ * Like `eq`, but for a field the `SluiceStore` interface declares `number`:
+ * asserts `actual` is actually typeof "number" BEFORE falling through to
+ * `eq`'s value check. `eq` alone happens to catch a store that returns a
+ * numeric-looking string too — `JSON.stringify("30100") !== JSON.stringify
+ * (30100)` — but only as an incidental side effect of the message being
+ * comparable, and only on the exact field/case pairs a case bothers to
+ * check with `eq`. This is the real assertion for that failure mode: it
+ * names the mismatch as a TYPE error, not a value diff, and (paired with
+ * `assertNumericFields`/`assertNullableNumericFields` below) is meant to be
+ * used everywhere a `SluiceStore` implementation hands back one of its
+ * `number`-typed fields — on every backend this suite runs against
+ * (MemoryStore, pglite, and the real-Postgres path in store.real.test.ts).
+ * This is exactly the gate that would have caught the Postgres adapter
+ * returning `bigint` (int8) columns as strings from node-postgres.
+ */
+function eqNumber(actual: unknown, expected: number, msg: string): void {
+  ensure(
+    typeof actual === "number",
+    `${msg}: expected a number (${String(expected)}), got ${typeof actual} (${JSON.stringify(actual)})`
+  );
+  eq(actual, expected, msg);
+}
+
+/** Every named field of `record` must be typeof "number" — see `eqNumber`. */
+function assertNumericFields<T extends object>(
+  record: T,
+  fields: readonly (keyof T)[],
+  msg: string
+): void {
+  for (const f of fields) {
+    const v: unknown = record[f];
+    ensure(
+      typeof v === "number",
+      `${msg}: ${String(f)} must be a number, got ${typeof v} (${JSON.stringify(v)})`
+    );
+  }
+}
+
+/** Every named field of `record` must be `null` or typeof "number" — see `eqNumber`. */
+function assertNullableNumericFields<T extends object>(
+  record: T,
+  fields: readonly (keyof T)[],
+  msg: string
+): void {
+  for (const f of fields) {
+    const v: unknown = record[f];
+    ensure(
+      v === null || typeof v === "number",
+      `${msg}: ${String(f)} must be a number or null, got ${typeof v} (${JSON.stringify(v)})`
+    );
+  }
+}
+
 function gateCandidate(o: {
   id: string;
   namespace?: string;
@@ -91,7 +145,7 @@ const CASES: Case[] = [
       eq(r.record.attempt, 1, "attempt");
       eq(r.record.fingerprint, "fp-1", "fingerprint");
       eq(r.record.leaseOwner, "w1", "leaseOwner");
-      eq(r.record.leaseExpiresAt, 30_100, "leaseExpiresAt");
+      eqNumber(r.record.leaseExpiresAt, 30_100, "leaseExpiresAt");
     },
   },
   {
@@ -205,7 +259,7 @@ const CASES: Case[] = [
       });
       eq(beat.ok, true, "held lease extends");
       const read = await s.readEffect("conf", "k1");
-      eq(read?.leaseExpiresAt, 40_000, "lease horizon moved");
+      eqNumber(read?.leaseExpiresAt, 40_000, "lease horizon moved");
       const stale = await s.heartbeatEffect({
         namespace: "conf",
         key: "k1",
@@ -273,7 +327,7 @@ const CASES: Case[] = [
       const approve = await s.readGate("g-a");
       eq(reject?.status, "timed_out", "default reject resolves to timed_out (fail closed)");
       eq(approve?.status, "approved", "explicit onTimeout approve auto-approves");
-      eq(reject?.decidedAt, 1_100, "decidedAt is the timeout horizon");
+      eqNumber(reject?.decidedAt, 1_100, "decidedAt is the timeout horizon");
     },
   },
   {
@@ -369,9 +423,9 @@ const CASES: Case[] = [
       const [a] = await s.appendEvents([base]);
       const [b] = await s.appendEvents([{ ...base, type: "effect.succeeded" }]);
       const [other] = await s.appendEvents([{ ...base, namespace: "conf2" }]);
-      eq(a?.seq, 1, "first event seq 1");
-      eq(b?.seq, 2, "second event seq 2");
-      eq(other?.seq, 1, "namespaces have independent cursors");
+      eqNumber(a?.seq, 1, "first event seq 1");
+      eqNumber(b?.seq, 2, "second event seq 2");
+      eqNumber(other?.seq, 1, "namespaces have independent cursors");
       const since = await s.readEvents("conf", 1, 100);
       eq(since.length, 1, "since-cursor returns later events only");
       eq(since[0]?.type, "effect.succeeded", "the later event");
@@ -395,6 +449,102 @@ const CASES: Case[] = [
       eq(await s.readEffect("conf", "k1"), null, "terminal record gone");
       const inFlight = await s.readEffect("conf", "k2");
       eq(inFlight?.status, "in_flight", "in_flight survives the sweep");
+    },
+  },
+  {
+    // A dedicated sweep across every `number`-typed field the SPEC's schema
+    // backs with a `bigint`/int8 column (SPEC §3, schema.ts) — not just the
+    // handful individual cases above happen to check with `eq`/`eqNumber`.
+    // An adapter that returns a numeric-looking STRING for any of these
+    // (e.g. a node-postgres-backed store whose row mapping forgot to coerce
+    // one bigint column) fails here even if no other case's literal value
+    // happens to touch that exact field.
+    name: "numeric-typed fields: every declared-number column is a JS number, never a string (bigint/int8 coercion gate)",
+    run: async (s) => {
+      const claim = await s.claimEffect({ ...CLAIM, now: 100 });
+      assertNumericFields(claim.record, ["attempt", "createdAt", "updatedAt", "expiresAt"], "claimEffect record");
+      assertNullableNumericFields(claim.record, ["leaseExpiresAt"], "claimEffect record");
+
+      const completed = await s.completeEffect({
+        namespace: "conf",
+        key: "k1",
+        leaseOwner: "w1",
+        status: "succeeded",
+        result: null,
+        now: 200,
+      });
+      assertNumericFields(completed, ["createdAt", "updatedAt", "expiresAt"], "completeEffect record");
+      assertNullableNumericFields(completed, ["leaseExpiresAt"], "completeEffect record");
+
+      const opened = await s.openGate(gateCandidate({ id: "g-num", key: "gk-num", now: 100 }));
+      assertNumericFields(opened.record, ["createdAt", "expiresAt"], "openGate record");
+      assertNullableNumericFields(
+        opened.record,
+        ["decidedAt", "claimExpiresAt", "processedAt"],
+        "openGate record"
+      );
+
+      const decided = await s.decideGate({
+        id: "g-num",
+        status: "approved",
+        decidedBy: "h",
+        reason: null,
+        tokenHash: null,
+        tokenNonce: null,
+        now: 200,
+      });
+      ensure(decided.record !== null, "decideGate: expected a record back");
+      if (decided.record !== null) {
+        assertNullableNumericFields(decided.record, ["decidedAt"], "decideGate record");
+      }
+
+      const claimed = await s.claimDecidedGates({ owner: "r1", leaseMs: 10_000, limit: 10, now: 300 });
+      ensure(claimed[0] !== undefined, "claimDecidedGates: expected the decided gate to be claimable");
+      const claimedGate = claimed[0];
+      if (claimedGate !== undefined) {
+        assertNumericFields(claimedGate, ["claimExpiresAt"], "claimDecidedGates record");
+      }
+
+      const circuit = await s.writeCircuit(
+        {
+          key: "conf:numeric-gate",
+          state: "closed",
+          window: [],
+          openedAt: null,
+          openMs: null,
+          consecutiveOpens: 0,
+          halfOpenOwner: null,
+          halfOpenExpiresAt: null,
+          updatedAt: 100,
+        },
+        null
+      );
+      ensure(circuit.record !== null, "writeCircuit: expected a record back");
+      if (circuit.record !== null) {
+        assertNumericFields(circuit.record, ["version", "updatedAt"], "writeCircuit record");
+        assertNullableNumericFields(
+          circuit.record,
+          ["openedAt", "openMs", "halfOpenExpiresAt"],
+          "writeCircuit record"
+        );
+      }
+
+      const [evt] = await s.appendEvents([
+        {
+          namespace: "conf",
+          ts: 100,
+          subjectType: "effect",
+          subjectKey: "k1",
+          type: "effect.claimed",
+          attempt: 1,
+          actor: "w1",
+          data: {},
+        },
+      ]);
+      ensure(evt !== undefined, "appendEvents: expected an event back");
+      if (evt !== undefined) {
+        assertNumericFields(evt, ["seq", "ts"], "appendEvents record");
+      }
     },
   },
 ];

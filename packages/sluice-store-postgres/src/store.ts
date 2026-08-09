@@ -37,6 +37,7 @@ import {
   mapEffectRow,
   mapGateRow,
   pgTextArrayLiteral,
+  toNumber,
   type CircuitRow,
   type EffectRow,
   type GateRow,
@@ -45,11 +46,20 @@ import {
 /** Any Drizzle Postgres database instance — node-postgres, Neon HTTP, pglite, ... */
 export type AnyPgDatabase = PgDatabase<PgQueryResultHKT, Record<string, unknown>>;
 
+/**
+ * `seq` and `ts` are `bigint` columns (schema.ts) — typed `number | string`
+ * here, not bare `number`, for the same reason `EffectRow`/`GateRow`/
+ * `CircuitRow` are in mapping.ts: node-postgres returns int8 as a string,
+ * pglite returns a `number`. `mapEventRow` below runs both through
+ * `toNumber` before they reach the `AuditEvent` the interface promises a
+ * plain `number` for. `attempt` stays bare `number | null`: it's `integer`
+ * (int4) in schema.ts, and int4 always comes back as a `number`.
+ */
 interface EventRow extends Record<string, unknown> {
   id: string;
   namespace: string;
-  seq: number;
-  ts: number;
+  seq: number | string;
+  ts: number | string;
   subject_type: string;
   subject_key: string;
   type: string;
@@ -64,8 +74,8 @@ function mapEventRow(row: EventRow): AuditEvent {
   return {
     id: row.id,
     namespace: row.namespace,
-    seq: row.seq,
-    ts: row.ts,
+    seq: toNumber(row.seq),
+    ts: toNumber(row.ts),
     subjectType: row.subject_type as AuditEvent["subjectType"],
     subjectKey: row.subject_key,
     type: row.type as AuditEvent["type"],

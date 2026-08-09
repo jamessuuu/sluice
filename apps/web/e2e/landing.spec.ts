@@ -41,9 +41,14 @@ test.describe("landing — renders with JavaScript disabled", () => {
 });
 
 test.describe("landing — with JavaScript enabled", () => {
-  test("favicon link points at the chip mark", async ({ page }) => {
+  // BRAND-KIT.md "Icon hierarchy": the favicon is sluice's own glyph (a weir
+  // gate), not the chip — the chip stays the maker's mark in the footer.
+  // Scoped to the SVG icon link specifically: metadata.icons also emits
+  // three PNG fallback sizes at the same rel, so an unscoped
+  // `link[rel="icon"]` locator now matches more than one element.
+  test("favicon link points at sluice's own glyph, not the chip", async ({ page }) => {
     await page.goto("/");
-    const icon = page.locator('link[rel="icon"]');
+    const icon = page.locator('link[rel="icon"][type="image/svg+xml"]');
     await expect(icon).toHaveAttribute("href", "/brand/favicon.svg");
   });
 
@@ -60,7 +65,10 @@ test.describe("docs", () => {
     await page.goto("/docs/quickstart");
     await expect(page.getByRole("heading", { name: "Quickstart" })).toBeVisible();
     await expect(page.locator("footer").getByText("Built by")).toBeVisible();
-    await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/brand/favicon.svg");
+    await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute(
+      "href",
+      "/brand/favicon.svg"
+    );
   });
 
   test("failure-modes page renders the full F1-F12 table", async ({ page }) => {

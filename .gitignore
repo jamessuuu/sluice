@@ -10,7 +10,6 @@ coverage/
 .DS_Store
 .pglite-data/
 next-env.d.ts
-apps/web/public/og.png
 apps/web/playwright-report/
 apps/web/test-results/
 apps/web/blob-report/

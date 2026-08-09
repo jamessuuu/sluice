@@ -132,22 +132,30 @@ const GLYPHS = {
       `<rect x="14" y="40" width="6" height="6" fill="${AMBER}"/>`,
     ].join(""),
 
-  /** snapgauge — a snap gauge's jaws closing on a part; amber jaw tip. */
+  /**
+   * snapgauge — a C-frame gauge with two jaws closing on a part.
+   * Redrawn 2026-08-09: the first attempt (an outline frame with two thin
+   * arms) rendered as an ambiguous box at 64px and as noise at 16px. Verified
+   * by rasterising and LOOKING, which is the only way this class of failure
+   * is ever caught. This version reads as a grip: a heavy C spine on the
+   * left, two solid jaws closing from above and below, and the part between
+   * them with the amber contact where the upper jaw lands.
+   */
   snapgauge: () =>
     [
-      // the part under test
-      `<rect x="26" y="24" width="12" height="16" fill="none" stroke="${INK}" stroke-width="${SW}"/>`,
-      // gauge frame
-      `<path d="M10 12 H54" fill="none" stroke="${INK}" stroke-width="${SW}"/>`,
-      // upper jaw
-      `<path d="M18 12 V24 H26" fill="none" stroke="${INK}" stroke-width="${SW}"/>`,
-      // lower jaw arm
-      `<path d="M46 12 V40 H38" fill="none" stroke="${INK}" stroke-width="${SW}"/>`,
-      // go / no-go tick marks on the frame
-      `<path d="M14 12 V6" fill="none" stroke="${INK}" stroke-width="${SWH}"/>`,
-      `<path d="M50 12 V6" fill="none" stroke="${INK}" stroke-width="${SWH}"/>`,
-      // THE CONTACT POINT — amber where the jaw meets the part
-      `<rect x="23" y="21" width="5" height="5" fill="${AMBER}"/>`,
+      // the C-frame spine
+      `<path d="M12 14 V50" fill="none" stroke="${INK}" stroke-width="${(G * 0.078).toFixed(3)}"/>`,
+      // upper jaw — solid, reaching right
+      `<rect x="12" y="14" width="30" height="7" fill="${INK}"/>`,
+      // lower jaw — solid, reaching right
+      `<rect x="12" y="43" width="30" height="7" fill="${INK}"/>`,
+      // the part being measured, held between the jaws
+      `<rect x="26" y="25" width="14" height="14" fill="none" stroke="${INK}" stroke-width="${SW}"/>`,
+      // go / no-go reference ticks off the open side
+      `<path d="M50 21 H58" fill="none" stroke="${INK}" stroke-width="${SWH}"/>`,
+      `<path d="M50 43 H58" fill="none" stroke="${INK}" stroke-width="${SWH}"/>`,
+      // THE CONTACT — amber, where the upper jaw meets the part
+      `<rect x="29" y="21" width="8" height="5" fill="${AMBER}"/>`,
     ].join(""),
 
   /** chaff — the sieve line: grain stays, chaff lifts away; topmost fragment amber. */
@@ -202,6 +210,93 @@ const GLYPHS = {
 };
 
 // ---------------------------------------------------------------------------
+// COMPACT GLYPHS — purpose-drawn for 16-32px, not scaled-down full glyphs.
+//
+// Why these exist: the full glyphs are hairline drawings on a 64 grid. Rendered
+// into a 16px favicon they turn to mush — verified by rasterising and looking,
+// which is the only way this failure is ever caught. A favicon is a silhouette
+// problem, not a drawing problem, so these are SOLID shapes with the stroke
+// weight roughly tripled, detail removed, and the single amber element enlarged
+// enough to survive. Same metaphor, fewer marks.
+//
+// Each keeps exactly ONE amber element, same as its full sibling.
+// ---------------------------------------------------------------------------
+const COMPACT = {
+  /**
+   * sluice — a raised gate. Redrawn after rasterising: the first attempt was a
+   * closed channel and read as "dark square with a dot" at 16px, and worse, it
+   * read the SAME as snapgauge. A favicon set has to be distinguishable from
+   * its own siblings in a tab strip, not just legible on its own.
+   * The distinctive shape here is the OVERHEAD GATE with clear air beneath it.
+   */
+  sluice: () =>
+    [
+      // the raised gate plate + its two guides — a heavy inverted U
+      `<rect x="10" y="8" width="44" height="11" fill="${INK}"/>`,
+      `<rect x="10" y="8" width="9" height="22" fill="${INK}"/>`,
+      `<rect x="45" y="8" width="9" height="22" fill="${INK}"/>`,
+      // the sill it closes against
+      `<rect x="10" y="50" width="44" height="8" fill="${INK}"/>`,
+      // THE HELD ITEM — amber, in the open gap, which is the whole idea
+      `<rect x="24" y="32" width="16" height="14" fill="${AMBER}"/>`,
+    ].join(""),
+
+  /**
+   * snapgauge — jaws closing from above and below on a part.
+   * Redrawn for the same reason: the enclosing C read as a filled box at 16px.
+   * Two heavy horizontal jaws with a wide gap is a silhouette no sibling shares.
+   */
+  snapgauge: () =>
+    [
+      // spine on the left
+      `<rect x="8" y="12" width="9" height="40" fill="${INK}"/>`,
+      // upper jaw, reaching right
+      `<rect x="8" y="12" width="40" height="10" fill="${INK}"/>`,
+      // lower jaw, reaching right
+      `<rect x="8" y="42" width="40" height="10" fill="${INK}"/>`,
+      // THE CONTACT — amber, on the measuring face of the upper jaw
+      `<rect x="30" y="24" width="14" height="9" fill="${AMBER}"/>`,
+    ].join(""),
+
+  /** chaff — the line, the grain, one fragment leaving. */
+  chaff: () =>
+    [
+      `<rect x="6" y="42" width="52" height="8" fill="${INK}"/>`,
+      `<rect x="10" y="28" width="11" height="11" fill="${INK}"/>`,
+      `<rect x="25" y="28" width="11" height="11" fill="${INK}"/>`,
+      `<rect x="40" y="28" width="11" height="11" fill="${INK}"/>`,
+      // THE FRAGMENT — amber, lifted clear of the line
+      `<rect x="44" y="8" width="13" height="13" fill="${AMBER}"/>`,
+    ].join(""),
+
+  /** tiltmeter — datum, plumb, bob. The deflection is the whole read. */
+  tiltmeter: () =>
+    [
+      // datum bar
+      `<rect x="12" y="8" width="40" height="8" fill="${INK}"/>`,
+      // the deflected line, heavy enough to survive
+      `<path d="M32 16 L44 44" stroke="${INK}" stroke-width="8" fill="none"/>`,
+      // baseline
+      `<rect x="10" y="50" width="44" height="6" fill="${INK}"/>`,
+      // THE BOB — amber, off true
+      `<rect x="38" y="38" width="14" height="14" fill="${AMBER}"/>`,
+    ].join(""),
+
+  /** dogwatch — the bell silhouette and the clapper. */
+  dogwatch: () =>
+    [
+      // bracket
+      `<rect x="26" y="6" width="12" height="8" fill="${INK}"/>`,
+      // solid bell body — a silhouette reads at 16px where an outline cannot
+      `<path d="M14 44 C14 24 20 14 32 14 C44 14 50 24 50 44 Z" fill="${INK}"/>`,
+      // mouth
+      `<rect x="11" y="44" width="42" height="7" fill="${INK}"/>`,
+      // THE CLAPPER — amber
+      `<rect x="26" y="51" width="12" height="10" fill="${AMBER}"/>`,
+    ].join(""),
+};
+
+// ---------------------------------------------------------------------------
 // emit
 // ---------------------------------------------------------------------------
 function svg(w, h, inner, { bg = null, label = "Agent James" } = {}) {
@@ -210,7 +305,7 @@ function svg(w, h, inner, { bg = null, label = "Agent James" } = {}) {
   }${inner}</svg>\n`;
 }
 
-function main() {
+async function main() {
   const args = Object.fromEntries(
     process.argv.slice(2).map((a) => {
       const [k, v] = a.replace(/^--/, "").split("=");
@@ -242,8 +337,35 @@ function main() {
   put("glyph.svg", svg(G, G, glyph, { label: project }));
   put("glyph-inv.svg", svg(G, G, GLYPHS[project]().replaceAll(INK, PAPER), { bg: INK, label: project }));
 
-  // Favicon: the chip at tab scale (3 pins reads cleaner at 16px).
-  put("favicon.svg", svg(G, G, chip(INK, AMBER, { pins: 3 }), { bg: PAPER }));
+  // ── Icon family ───────────────────────────────────────────────────────────
+  // The PROJECT's own glyph is the identity in a tab, not the chip: five
+  // identical chip favicons are indistinguishable in a tab strip, which is the
+  // one job a favicon has. The chip stays the maker's mark in the footer and
+  // the README lockup — association, not identity.
+  const compact = COMPACT[project]();
+
+  // Scalable favicon. Modern browsers take the SVG and downscale it, so this
+  // one carries the COMPACT drawing, not the full glyph.
+  put("favicon.svg", svg(G, G, compact, { bg: PAPER, label: `${project} icon` }));
+
+  // Explicit small sizes for browsers that pick a raster. Rendered from the
+  // compact drawing at each size by the PNG step (scripts/icons.mjs).
+  put("icon-compact.svg", svg(G, G, compact, { bg: PAPER, label: `${project} icon` }));
+  put("icon-compact-inv.svg", svg(G, G, COMPACT[project]().replaceAll(INK, PAPER), { bg: INK, label: `${project} icon` }));
+
+  // Maskable / apple-touch: same drawing inset to the safe area, on paper, so
+  // a platform that crops to a circle or rounds the corners does not clip it.
+  const inset = 10;
+  const scale = (G - inset * 2) / G;
+  put(
+    "icon-maskable.svg",
+    svg(
+      G,
+      G,
+      `<rect width="${G}" height="${G}" fill="${PAPER}"/><g transform="translate(${inset},${inset}) scale(${scale.toFixed(4)})">${compact}</g>`,
+      { label: `${project} icon` }
+    )
+  );
 
   // Lockup: project glyph + wordmark, for the README header.
   const cell = 3.2;
@@ -275,8 +397,46 @@ function main() {
     )
   );
 
+  // ── Raster sizes ──────────────────────────────────────────────────────────
+  // SVG favicons cover modern browsers, but apple-touch-icon and the PWA
+  // manifest require real PNGs, and some platforms still pick a raster over an
+  // SVG. Each size is rendered FROM THE COMPACT DRAWING rather than from the
+  // full glyph, so a 16px icon is a purpose-drawn silhouette and not a
+  // downscaled hairline drawing.
+  //
+  // sharp is optional: if it is not resolvable, the SVGs are still written and
+  // this step reports the skip rather than failing the build. That keeps the
+  // generator usable in a repo that has not added the dependency yet.
+  let sharp = null;
+  try {
+    ({ default: sharp } = await import("sharp"));
+  } catch {
+    /* optional */
+  }
+
+  if (sharp) {
+    const raster = [
+      ["favicon-16.png", 16, "icon-compact.svg"],
+      ["favicon-32.png", 32, "icon-compact.svg"],
+      ["favicon-48.png", 48, "icon-compact.svg"],
+      ["apple-touch-icon.png", 180, "icon-maskable.svg"],
+      ["icon-192.png", 192, "icon-maskable.svg"],
+      ["icon-512.png", 512, "icon-maskable.svg"],
+      ["og.png", null, "og.svg"],
+    ];
+    for (const [name, size, from] of raster) {
+      const src = join(outDir, from);
+      const img = sharp(src, { density: 384 });
+      if (size) img.resize(size, size, { fit: "contain" });
+      await img.png({ compressionLevel: 9 }).toFile(join(outDir, name));
+      written.push(name);
+    }
+  } else {
+    console.log("brand: sharp not resolvable — SVGs written, PNG sizes skipped");
+  }
+
   console.log(`brand: ${project} -> ${outDir}`);
   for (const f of written) console.log(`  ${f}`);
 }
 
-main();
+await main();

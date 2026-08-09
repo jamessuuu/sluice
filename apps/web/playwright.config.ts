@@ -4,8 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 // never `next dev` (dev-mode HTML differs from what's actually served in
 // production, and the whole point of this gate is proving the deployed
 // shape). `webServer` below runs the exact `pnpm build && pnpm start`
-// scripts (prebuild's OG generation included), so `pnpm test:e2e` alone is
-// the whole gate — nothing to pre-build by hand.
+// scripts, so `pnpm test:e2e` alone is the whole gate — nothing to pre-build
+// by hand.
 const PORT = 4173;
 
 export default defineConfig({
@@ -24,10 +24,10 @@ export default defineConfig({
     // Inlined rather than `pnpm build && pnpm start -- --port N`: pnpm's
     // arg-passthrough for a zero-arg script ("start": "next start") does not
     // reliably forward `-- --port N` as flags to the underlying `next`
-    // binary. Calling next directly (preceded by the same build:deps +
-    // OG-generation steps `pnpm build`'s prebuild hook would otherwise run —
-    // see next.config.ts's dist-alias deviation note) is unambiguous.
-    command: `pnpm run build:deps && node scripts/generate-og.mjs && next build && next start -p ${String(PORT)}`,
+    // binary. Calling next directly (preceded by the same build:deps step
+    // `pnpm build`'s prebuild hook would otherwise run — see
+    // next.config.ts's dist-alias deviation note) is unambiguous.
+    command: `pnpm run build:deps && next build && next start -p ${String(PORT)}`,
     url: `http://127.0.0.1:${String(PORT)}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

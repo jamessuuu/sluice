@@ -9,9 +9,33 @@ survive a process crash. Proven by a chaos harness that runs without a model API
 
 > **Status: `1.0.0-rc.1` — the v1 consumer contract is frozen.** All nine build
 > milestones (SPEC §10) are complete and gate-green. Docs, playground, and gate
-> walkthrough: [sluice.vercel.app](https://sluice.vercel.app) (`apps/web`, SPEC §9 —
-> zero API routes, zero database, zero writes; the playground/gate pages run this
-> exact core, client-side, in a Web Worker).
+> walkthrough: [sluice-iota.vercel.app](https://sluice-iota.vercel.app) (`apps/web`,
+> SPEC §9 — zero API routes, zero database, zero writes; the playground/gate pages
+> run this exact core, client-side, in a Web Worker).
+
+<!-- chaos:begin -->
+**Chaos harness** — `golden 24/24 · fuzz 200 seeds · 0 invariant violations`
+
+| metric | naive retry (no sluice) | with sluice |
+|---|---|---|
+| intent success rate | 100.0% | 77.0% (20.0% fail closed — parked `indeterminate`, never silent) |
+| duplicate side effects | **666** | **0** |
+
+Baseline workload: 200 intents delivered 2–5× each under 30.0% injected failure (15.0% errors + 15.0% landed-but-timed-out).
+Retry amplification under 30.0% injected failure: **0.88×** downstream attempts per intent (CI gate ≤ 1.5).
+`run()` latency under fault injection: p50 0 ms · p99 60,000 ms — **virtual clock time, not wall clock**.
+Run shape: 9 scenarios × 10 seeds · 740 intents · 1,014 deliveries · git `debf2ed`.
+Regenerate with `pnpm chaos` — full tables in [chaos/RESULTS.md](chaos/RESULTS.md).
+<!-- chaos:end -->
+
+[![The sluice gate walkthrough: a worker opens an approval gate, gets killed, the gate survives a real reload, gets approved, and resumes to fire its side effect exactly once.](apps/web/public/demo/sluice-poster.png)](https://sluice-iota.vercel.app/#durable-approval-gates)
+
+GitHub will not autoplay the recording reliably, so this links to the live
+page instead — click through to watch it, or try the walkthrough yourself at
+[sluice-iota.vercel.app/gate](https://sluice-iota.vercel.app/gate) (under 30
+seconds, survives a real page reload).
+
+![sluice's exactly-once state machine: in_flight has three outgoing transitions, to succeeded, to failed, and — drawn in amber, because it is the one edge that matters — to indeterminate, which never auto-retries and requires an explicit reclaim or a human gate decision to leave.](apps/web/public/diagram/states.svg)
 
 ## Install
 
@@ -27,13 +51,23 @@ import { createSluice, idempotencyKey, MemoryStore } from "@jamessuuu/sluice";
 
 const sluice = createSluice({ store: new MemoryStore() });
 
-await sluice.run(
+const first = await sluice.run(
   { key: idempotencyKey({ tool: "send_email", to: "a@b.c" }) },
   async () => sendEmail("a@b.c")
 );
+// first.status === "executed" — the email went out once.
+
+const again = await sluice.run(
+  { key: idempotencyKey({ tool: "send_email", to: "a@b.c" }) },
+  async () => sendEmail("a@b.c")
+);
+// again.status === "replayed" — sendEmail did NOT run a second time;
+// again.value is the recorded result from the first call.
 ```
 
-Full walkthrough: [docs/quickstart](https://sluice.vercel.app/docs/quickstart).
+Full walkthrough: [docs/quickstart](https://sluice-iota.vercel.app/docs/quickstart).
+The concept behind it — why `failed` and `indeterminate` are two different
+states, not one — is [docs/concepts](https://sluice-iota.vercel.app/docs/concepts).
 
 ## Why
 
@@ -51,21 +85,6 @@ side-effecting tool calls in:
 - **A tamper-evident audit trail** — hash-chained events, verifiable offline.
 
 Zero runtime dependencies. No LLM anywhere. No telemetry.
-
-<!-- chaos:begin -->
-**Chaos harness** — `golden 24/24 · fuzz 200 seeds · 0 invariant violations`
-
-| metric | naive retry (no sluice) | with sluice |
-|---|---|---|
-| intent success rate | 100.0% | 77.0% (20.0% fail closed — parked `indeterminate`, never silent) |
-| duplicate side effects | **666** | **0** |
-
-Baseline workload: 200 intents delivered 2–5× each under 30.0% injected failure (15.0% errors + 15.0% landed-but-timed-out).
-Retry amplification under 30.0% injected failure: **0.88×** downstream attempts per intent (CI gate ≤ 1.5).
-`run()` latency under fault injection: p50 0 ms · p99 60,000 ms — **virtual clock time, not wall clock**.
-Run shape: 9 scenarios × 10 seeds · 740 intents · 1,014 deliveries · git `debf2ed`.
-Regenerate with `pnpm chaos` — full tables in [chaos/RESULTS.md](chaos/RESULTS.md).
-<!-- chaos:end -->
 
 ## Monorepo
 
@@ -91,14 +110,14 @@ sluice chaos --seed <n>
 `gates` operates against a local JSON `MemoryStore` snapshot (`.sluice/state.json`
 by default) — the CLI's ephemeral mode for local dogfooding and demos, not a
 production Postgres connection (point your own script at your own store for
-that). `chaos` runs the [chaos harness](https://sluice.vercel.app/docs/chaos-harness)
+that). `chaos` runs the [chaos harness](https://sluice-iota.vercel.app/docs/chaos-harness)
 (numbers below) for one seed; it dynamically imports `@jamessuuu/sluice-testkit`
 so the zero-runtime-dependency core never depends on it.
 
 ## Failure modes
 
 Every row is asserted by a chaos scenario and a golden fixture — see
-[docs/failure-modes](https://sluice.vercel.app/docs/failure-modes) for the full
+[docs/failure-modes](https://sluice-iota.vercel.app/docs/failure-modes) for the full
 prose. `SluiceError` always carries `{ code, retryable, indeterminate, context }`
 — never a stack, never a driver string.
 
@@ -116,6 +135,12 @@ prose. `SluiceError` always carries `{ code, retryable, indeterminate, context }
 | F10 | Result too large (> `maxResultBytes`) | Stored as `resultOmitted`; the type forces every caller to handle it. |
 | F11 | Store unavailable | `E_STORE`; `indeterminate` if after the claim, `retryable` if before. The effect function never runs without a granted claim. |
 | F12 | Gate timeout | `sweepTimeouts` (and any read of an expired gate) resolves it to `timed_out`, applying `onTimeout` (default `reject`). |
+
+## Non-goals
+
+No domain logic (no senders, schedulers, incident models). No LLM calls. No
+policy DSL / content guardrails. Not a workflow engine — sluice runs *inside*
+one step of yours. No telemetry, ever.
 
 ## Limitations
 
@@ -135,13 +160,7 @@ prose. `SluiceError` always carries `{ code, retryable, indeterminate, context }
   published p50/p99 describe scheduling behaviour under a `VirtualClock`, not
   real network/database I/O.
 
-Full detail: [docs/limitations](https://sluice.vercel.app/docs/limitations).
-
-## Non-goals
-
-No domain logic (no senders, schedulers, incident models). No LLM calls. No
-policy DSL / content guardrails. Not a workflow engine — sluice runs *inside*
-one step of yours. No telemetry, ever.
+Full detail: [docs/limitations](https://sluice-iota.vercel.app/docs/limitations).
 
 ---
 

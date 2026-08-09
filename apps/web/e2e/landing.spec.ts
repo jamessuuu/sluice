@@ -69,4 +69,67 @@ test.describe("docs", () => {
     await expect(page.getByText("F12")).toBeVisible();
     await expect(page.getByText("E_KEY_CONFLICT").first()).toBeVisible();
   });
+
+  test("concepts page renders the diagram and every other docs page is reachable from its nav", async ({
+    page,
+  }) => {
+    await page.goto("/docs/concepts");
+    await expect(page.getByRole("heading", { name: "Concepts", exact: true })).toBeVisible();
+    // The diagram is inlined SVG (DESIGN-DIRECTION.md), not <img src>, so its
+    // title/desc are real accessibility-tree content — assert on that, not a
+    // screenshot.
+    await expect(page.locator("svg title")).toHaveText(/exactly-once state machine/i);
+    await expect(page.locator("svg desc")).toContainText(/no automatic path back|never silently retried/i);
+
+    const nav = page.getByRole("navigation", { name: "Docs" });
+    for (const label of ["Quickstart", "Idempotency keys", "Gates", "Failure modes", "Limitations"]) {
+      await expect(nav.getByRole("link", { name: label })).toHaveAttribute("href", /\/docs\//);
+    }
+  });
+});
+
+test.describe("landing — evidence sections (DESIGN-DIRECTION.md)", () => {
+  test("mechanism diagram is inlined SVG with a real title and desc", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("svg title")).toHaveText(/exactly-once state machine/i);
+    await expect(page.locator("svg desc")).toContainText(/indeterminate/i);
+  });
+
+  test("failure-mode table on the landing page shows F1 through F12", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText("F1").first()).toBeVisible();
+    await expect(page.getByText("F12").first()).toBeVisible();
+  });
+
+  test("demo video has a poster, is muted, and has no visible browser chrome (no controls)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const video = page.getByTestId("gate-demo-video");
+    await expect(video).toHaveAttribute("poster", "/demo/sluice-poster.png");
+    await expect(video).toHaveJSProperty("muted", true);
+    await expect(video).toHaveJSProperty("loop", true);
+    await expect(video).not.toHaveAttribute("controls", "");
+  });
+
+  test("reduced motion renders the poster and a link instead of the autoplaying video", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await expect(page.getByTestId("gate-demo-video")).toBeHidden();
+    const fallback = page.getByTestId("gate-demo-reduced-motion");
+    await expect(fallback).toBeVisible();
+    await expect(fallback.getByRole("link", { name: /watch the recording/i })).toHaveAttribute(
+      "href",
+      "/demo/sluice-demo.webm"
+    );
+  });
+
+  test("without a reduced-motion preference, the video is visible and the fallback is hidden", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/");
+    await expect(page.getByTestId("gate-demo-video")).toBeVisible();
+    await expect(page.getByTestId("gate-demo-reduced-motion")).toBeHidden();
+  });
 });

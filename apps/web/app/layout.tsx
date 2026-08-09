@@ -8,7 +8,7 @@ const DESCRIPTION =
   "Idempotent execution, retries with a circuit breaker, durable human approval gates, and a tamper-evident audit trail. Zero runtime dependencies. Proven by a deterministic chaos harness.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://sluice.vercel.app"),
+  metadataBase: new URL("https://sluice-iota.vercel.app"),
   title: { default: TITLE, template: "%s · sluice" },
   description: DESCRIPTION,
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
-    url: "https://sluice.vercel.app",
+    url: "https://sluice-iota.vercel.app",
     siteName: "sluice",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
     type: "website",

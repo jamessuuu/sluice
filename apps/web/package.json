@@ -16,7 +16,8 @@
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps chromium"
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "record-demo": "node ../../scripts/record-demo.mjs --project=sluice --out=public/demo"
   },
   "dependencies": {
     "@jamessuuu/sluice": "workspace:^",

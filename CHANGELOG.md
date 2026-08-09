@@ -5,6 +5,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: se
 
 ## [Unreleased]
 
+### Added
+- Design + documentation pass on `apps/web` (no consumer-contract change,
+  packages stay at `1.0.0-rc.1`): `scripts/diagram.mjs`, a deterministic
+  generator (same conventions as `scripts/brand.mjs`, CI drift-checked) for
+  the four-state effect machine diagram — `in_flight` to `succeeded` /
+  `failed` / `indeterminate`, with the fail-closed edge into `indeterminate`
+  as the one amber element. A real demo recording of the gate walkthrough
+  (`scripts/record-demo.mjs`, run against the deployed site) — open, crash,
+  a real page reload, approve, resume, fires once — embedded on the landing
+  page with a `prefers-reduced-motion` fallback (poster + link, CSS-only, no
+  client component). The landing page rebuilt around evidence density: the
+  666→0 comparison rendered at size, the diagram, the demo, and the F1–F12
+  failure-mode table each sit next to the claim they back up. A new
+  `/docs/concepts` page. README reordered to lead with the same evidence,
+  plus a fix for several stale `sluice.vercel.app` links that should have
+  read `sluice-iota.vercel.app`.
+- Fixed a real bug in `scripts/record-demo.mjs`'s `tryClick` helper: an
+  unconditional `getByRole(...).or(getByText(...))` resolved in DOM order,
+  so on `/gate` — whose own intro paragraph says "Approve it, resume it..."
+  above the Approve button — `.first()` silently clicked the paragraph
+  instead of the button. Found by recording sluice's own demo and noticing
+  the Approve click never landed.
+
 ## [1.0.0-rc.1] — M9: freeze + polish
 
 The v1 consumer contract is frozen (SPEC §5's P5/dogwatch contract):

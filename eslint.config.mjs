@@ -21,6 +21,11 @@ export default tseslint.config(
             "apps/*/playwright.config.ts",
             "packages/*/bin/*.mjs",
           ],
+          // scripts/diagram.mjs + scripts/record-demo.mjs pushed the
+          // default-project file count past the (arbitrary) default cap of
+          // 8 — these are still plain scripts with type-checking disabled
+          // below (files: ["**/*.mjs", "scripts/**"]), just more of them.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 20,
         },
         tsconfigRootDir: import.meta.dirname,
       },

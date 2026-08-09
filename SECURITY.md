@@ -10,7 +10,7 @@ to report a problem.
 
 `@jamessuuu/sluice`, `@jamessuuu/sluice-store-postgres`, and
 `@jamessuuu/sluice-testkit` — the three published packages — and the demo
-site at `apps/web` (sluice.vercel.app).
+site at `apps/web` (sluice-iota.vercel.app).
 
 Out of scope: your application code, your database credentials, your
 downstream services. sluice performs no identity resolution and has no
@@ -50,7 +50,7 @@ surface in an agent's tool-call response without a redaction pass.
 
 `apps/web` (the docs + playground site) has **no server-side write path at
 all** — zero API routes, zero database (see [SPEC §9](docs/SPEC.md#9-demo-site-appsweb)
-and the [homepage](https://sluice.vercel.app)'s "why this site has no
+and the [homepage](https://sluice-iota.vercel.app)'s "why this site has no
 backend" section). The playground and gate walkthrough run the real core
 entirely client-side against an in-memory store; nothing a visitor does ever
 reaches a server sluice controls. The quality bar "no unauthenticated write

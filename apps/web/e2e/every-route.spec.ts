@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
 const ROUTES = [
   "/",
   "/docs/quickstart",
+  "/docs/concepts",
   "/docs/idempotency-keys",
   "/docs/retries-and-breaker",
   "/docs/gates",

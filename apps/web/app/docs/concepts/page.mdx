@@ -1,0 +1,78 @@
+import { DiagramFigure } from "@/components/diagram-figure";
+
+export const metadata = {
+  title: "Concepts",
+  description: "Four states, not three — why failed and indeterminate must never be conflated.",
+};
+
+# Concepts
+
+Every effect sluice tracks is in exactly one of four states:
+`in_flight`, `succeeded`, `failed`, or `indeterminate`. Three of those are
+final. The fourth — `in_flight` — is where all the interesting work happens,
+and where it always starts.
+
+<DiagramFigure />
+
+## Why four states, not three
+
+Most retry logic treats an error as one thing: it failed, so retry it. sluice
+splits "it failed" into two states that look similar from the caller's side
+and are opposite in what they permit:
+
+- **`failed`** means the effect **provably did not happen**. The store has a
+  terminal write, sluice classified the error, and there is nothing to be
+  unsure about. Replaying returns the recorded typed error every time.
+- **`indeterminate`** means sluice **does not know**. A caller-side timeout
+  after the call was already sent. A crash after the effect ran but before
+  its result was persisted. A store write that itself failed right after a
+  claim was granted. In every one of these, the side effect may have already
+  happened — sluice cannot tell, and it says so instead of guessing.
+
+Conflating the two is the exact bug sluice exists to close. A naive retry
+loop treats "I got an error" as one bucket and retries all of it, including
+the fraction that already landed. That is how a `charge_card` call becomes
+two charges: the first attempt succeeded downstream but the caller never saw
+the response, so it retried an operation that had already run.
+
+## The one edge that matters
+
+Look at the diagram again: two of the three outgoing arrows from `in_flight`
+are ordinary outcomes. The third — `indeterminate` — is drawn in amber
+because it behaves differently from the other two in one specific way. Both
+`succeeded` and `failed` are outcomes a caller can act on immediately and
+completely: replay the result, or know the effect never ran.
+`indeterminate` is not actionable the same way, and critically, **sluice
+never automatically retries out of it**. By default (`onIndeterminate:
+'fail'`), the effect is parked as `indeterminate` and stays there until
+something explicit moves it:
+
+- **`reclaim`** — the caller declares the downstream operation safe to
+  repeat (idempotent on its own, or acceptable to duplicate) and sluice
+  re-executes it under a fresh claim.
+- **`gate`** — sluice opens a durable "did this land?" approval gate and a
+  human decides, out of band. See [Gates](/docs/gates).
+
+Both are opt-in. Say nothing, and an indeterminate charge stays parked
+forever rather than firing a second time on a guess. That is what "fails
+closed" means in every doc on this site.
+
+## Where retries actually happen
+
+Retries are not a fifth state and not a transition back out of a terminal
+state — they happen **inside** `in_flight`, under one lease, before any
+terminal write occurs (full detail: [Retries & breaker](/docs/retries-and-breaker)).
+A `retryable` classification tries again within the same claim; only when
+retries are exhausted, or the classifier says `failed` outright, does the
+record move to the terminal `failed` state. Nothing about the outer state
+machine changes shape because of that — `in_flight` still has exactly three
+possible exits, and `indeterminate` is still the one with no way back in on
+its own.
+
+## Next
+
+- [Failure modes](/docs/failure-modes) — all twelve fault scenarios, each
+  naming which of the four states it lands in and why.
+- [Idempotency keys](/docs/idempotency-keys) — the key doctrine that makes
+  the replay half of `succeeded` and `failed` correct in the first place.
+- [Gates](/docs/gates) — the human-in-the-loop way out of `indeterminate`.

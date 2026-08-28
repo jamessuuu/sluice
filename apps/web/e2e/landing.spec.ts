@@ -55,7 +55,10 @@ test.describe("landing — with JavaScript enabled", () => {
   test("links to docs, playground, and gate walkthrough", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("link", { name: /Read the docs/ })).toHaveAttribute("href", "/docs/quickstart");
-    await expect(page.getByRole("link", { name: /Try the playground/ })).toHaveAttribute("href", "/playground");
+    // Two links carry this name on purpose: the primary CTA under the hero stat and the footer text link.
+    const playground = page.getByRole("link", { name: /Try the playground/ });
+    await expect(playground).toHaveCount(2);
+    for (const link of await playground.all()) await expect(link).toHaveAttribute("href", "/playground");
     await expect(page.getByRole("link", { name: /Walk through a gate/ })).toHaveAttribute("href", "/gate");
   });
 });

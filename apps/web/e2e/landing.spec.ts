@@ -12,7 +12,7 @@ test.describe("landing — renders with JavaScript disabled", () => {
 
     await expect(page.getByRole("heading", { name: "sluice", exact: true })).toBeVisible();
     await expect(page.getByText("Exactly-once side effects for agent tool calls", { exact: false })).toBeVisible();
-    await expect(page.getByText("pnpm add @jamessuuu/sluice")).toBeVisible();
+    await expect(page.getByText(/git clone https:\/\/github\.com\/jamessuuu\/sluice/)).toBeVisible(); // not on npm yet: the snippet must tell the truth
     // The chaos table is read from chaos/results/latest.json at build time —
     // its presence (not its exact numbers, which drift) is what this proves.
     await expect(page.getByText("duplicate side effects")).toBeVisible();

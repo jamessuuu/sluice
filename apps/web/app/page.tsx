@@ -37,7 +37,7 @@ export default function LandingPage() {
       </p>
 
       <pre className="mb-12 overflow-x-auto border border-rule bg-ink px-4 py-3 font-mono text-sm text-paper">
-        <code>pnpm add @jamessuuu/sluice</code>
+        <code>git clone https://github.com/jamessuuu/sluice && cd sluice && pnpm install   # not yet on npm</code>
       </pre>
 
       <section className="mb-16">

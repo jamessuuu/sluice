@@ -51,6 +51,19 @@ export default function LandingPage() {
         <div className="mb-4">
           <EvidenceHero />
         </div>
+        {/* The site's only in-browser proof of the "sluice" number above had no
+            button pointing at it — the sole actionable element on the page was
+            a copy-paste install command (ui-audit.md 2026-08-28). House button:
+            0-2px radius (the global reset already zeroes radius), ~42px tall,
+            amber solid fill — same pattern as the gate page's Approve button. */}
+        <div className="mb-6">
+          <Link
+            href="/playground"
+            className="inline-flex items-center border border-amber bg-amber px-5 py-2.5 text-sm font-semibold text-paper hover:bg-amber/90"
+          >
+            Try the playground
+          </Link>
+        </div>
         <ChaosTable />
       </section>
 

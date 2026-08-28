@@ -39,12 +39,27 @@ seconds, survives a real page reload).
 
 ## Install
 
+**Not yet on npm.** `@jamessuuu/sluice`, `@jamessuuu/sluice-store-postgres` and
+`@jamessuuu/sluice-testkit` are real workspace packages in this monorepo
+(`packages/*`), but none has been `npm publish`ed — a `pnpm add @jamessuuu/sluice`
+command would 404. Until that ships, two honest ways to actually run this:
+
+- **No install** — the playground and the gate walkthrough at
+  [sluice-iota.vercel.app](https://sluice-iota.vercel.app) run this exact core,
+  client-side, against an in-memory store.
+- **The real thing** — clone the repo; the workspace resolves
+  `@jamessuuu/sluice` straight from source, no separate build step needed to
+  use it:
+
 ```bash
-pnpm add @jamessuuu/sluice
-# optional: a Postgres store for production, and the chaos harness for your own tests
-pnpm add @jamessuuu/sluice-store-postgres
-pnpm add -D @jamessuuu/sluice-testkit
+git clone https://github.com/jamessuuu/sluice
+cd sluice && pnpm install
+pnpm chaos        # regenerates the numbers this README quotes above
+pnpm test:e2e      # the gate walkthrough, run for real
 ```
+
+The API below is real and unchanged — this is what the import looks like once
+the package is published, and it is exactly what the workspace already runs:
 
 ```ts
 import { createSluice, idempotencyKey, MemoryStore } from "@jamessuuu/sluice";

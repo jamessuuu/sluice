@@ -22,25 +22,45 @@ const ROWS: { id: string; fault: string; contract: string }[] = [
 
 export function FailureModesTable() {
   return (
-    <div className="overflow-x-auto border border-rule">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b border-rule bg-ink/5">
-            <th className="px-3 py-2 font-semibold text-ink">#</th>
-            <th className="px-3 py-2 font-semibold text-ink">fault</th>
-            <th className="px-3 py-2 font-semibold text-ink">contract</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ROWS.map((r) => (
-            <tr key={r.id} className="border-t border-rule align-top">
-              <td className="px-3 py-2 font-mono text-ink/60">{r.id}</td>
-              <td className="px-3 py-2 text-ink/90">{r.fault}</td>
-              <td className="px-3 py-2 text-ink/80">{r.contract}</td>
+    <>
+      {/* >= 600px: the table. At native mobile widths it never overflowed the
+          page (it already had its own overflow-x-auto wrapper), but three
+          columns of prose sharing ~270px shrank each cell to 3-6 lines of
+          near-illegible text instead (ui-audit.md 2026-08-28) — technically
+          contained, still unreadable. */}
+      <div className="hidden overflow-x-auto border border-rule min-[600px]:block">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-rule bg-ink/5">
+              <th className="px-3 py-2 font-semibold text-ink">#</th>
+              <th className="px-3 py-2 font-semibold text-ink">fault</th>
+              <th className="px-3 py-2 font-semibold text-ink">contract</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {ROWS.map((r) => (
+              <tr key={r.id} className="border-t border-rule align-top">
+                <td className="px-3 py-2 font-mono text-ink/60">{r.id}</td>
+                <td className="px-3 py-2 text-ink/90">{r.fault}</td>
+                <td className="px-3 py-2 text-ink/80">{r.contract}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Below 600px: one card per fault, id/fault/contract stacked and free
+          to wrap at full width, instead of three columns fighting for a
+          viewport too narrow to hold them side by side. */}
+      <dl className="border border-rule min-[600px]:hidden">
+        {ROWS.map((r) => (
+          <div key={r.id} className="border-t border-rule px-3 py-3 first:border-t-0">
+            <dt className="mb-1 font-mono text-xs font-semibold text-ink/60">{r.id}</dt>
+            <dd className="mb-1 text-sm text-ink/90">{r.fault}</dd>
+            <dd className="text-sm text-ink/80">{r.contract}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
   );
 }

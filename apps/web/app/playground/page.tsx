@@ -74,7 +74,7 @@ export default function PlaygroundPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
       <h1 className="mb-2 text-2xl font-semibold tracking-tight text-ink">Playground</h1>
-      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink/70">
+      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink-2">
         Runs the real <code className="font-mono">@jamessuuu/sluice</code> core in a Web Worker
         against an in-memory store and a fault-injecting fake transport — the same primitives the
         chaos harness uses. Nothing here touches a server.
@@ -83,7 +83,7 @@ export default function PlaygroundPage() {
       <Controls params={params} onChange={setParams} disabled={running} onRun={run} />
 
       {error !== null && (
-        <p className="mb-6 border border-amber px-4 py-2 text-sm text-amber" role="alert">
+        <p className="mb-6 border border-fail px-4 py-2 text-sm text-fail-ink" role="alert">
           {error}
         </p>
       )}
@@ -108,15 +108,15 @@ export default function PlaygroundPage() {
           <LedgerTable naive={naiveLedger} sluice={sluiceLedger} />
         </Panel>
         <Panel title="Audit event stream">
-          <ul className="max-h-80 space-y-1 overflow-y-auto font-mono text-xs text-ink/80">
+          <ul className="max-h-80 space-y-1 overflow-y-auto font-mono text-xs text-ink-2">
             {audit.length === 0 && <li className="text-ink/40">No events yet — click Run.</li>}
             {audit
               .slice()
               .reverse()
               .map((e) => (
-                <li key={e.seq} className="border-b border-rule/60 py-1">
+                <li key={e.seq} className="border-b border-edge-lo/60 py-1">
                   <span className="text-ink/40">#{e.seq}</span> {e.type}{" "}
-                  <span className="text-ink/50">({e.subjectKey})</span>
+                  <span className="text-ink-3">({e.subjectKey})</span>
                 </li>
               ))}
           </ul>
@@ -145,7 +145,7 @@ function Controls({
   );
 
   return (
-    <div className="mb-8 grid gap-5 border border-rule px-5 py-4 sm:grid-cols-2">
+    <div className="mb-8 grid gap-5 border border-edge-lo px-5 py-4 sm:grid-cols-2">
       <Slider
         label={`Duplicate rate — ${String(Math.round(params.duplicateRate * 100))}%`}
         value={params.duplicateRate}
@@ -170,7 +170,7 @@ function Controls({
         }}
       />
       <div className="flex items-end justify-between gap-4">
-        <label className="flex items-center gap-2 text-sm text-ink/80">
+        <label className="flex items-center gap-2 text-sm text-ink-2">
           <input
             type="checkbox"
             checked={params.crashEnabled}
@@ -181,11 +181,11 @@ function Controls({
           Crash toggle (simulate a crash mid-effect)
         </label>
       </div>
-      <label className="flex items-center gap-2 text-sm text-ink/80">
+      <label className="flex items-center gap-2 text-sm text-ink-2">
         Seed
         <input
           type="number"
-          className="w-20 border border-rule bg-paper px-2 py-1 font-mono text-sm"
+          className="w-20 border border-edge-lo bg-sub-0 px-2 py-1 font-mono text-sm"
           value={params.seed}
           onChange={(e) => {
             const n = Number(e.target.value);
@@ -198,7 +198,7 @@ function Controls({
           type="button"
           onClick={onRun}
           disabled={disabled}
-          className="border border-ink bg-ink px-5 py-2 text-sm font-semibold text-paper transition hover:bg-ink/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="border border-signal bg-signal px-5 py-2 text-sm font-semibold text-sub-2 transition hover:bg-signal-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {disabled ? "Running…" : "Run"}
         </button>
@@ -219,7 +219,7 @@ function Slider({
   max?: number;
 }) {
   return (
-    <label className="block text-sm text-ink/80">
+    <label className="block text-sm text-ink-2">
       {label}
       <input
         type="range"
@@ -248,11 +248,11 @@ function Counter({
   testId: string;
 }) {
   return (
-    <div className="border border-rule px-5 py-4">
-      <p className="mb-1 text-xs uppercase tracking-wide text-ink/50">{label}</p>
+    <div className="border border-edge-lo px-5 py-4">
+      <p className="mb-1 text-xs uppercase tracking-wide text-ink-3">{label}</p>
       <p
         data-testid={testId}
-        className={`font-mono text-4xl font-semibold ${tone === "bad" ? "text-ink" : "text-amber"}`}
+        className={`font-mono text-4xl font-semibold ${tone === "bad" ? "text-ink" : "text-fail-ink"}`}
       >
         {value}
       </p>
@@ -262,7 +262,7 @@ function Counter({
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-rule px-4 py-3">
+    <div className="border border-edge-lo px-4 py-3">
       <h2 className="mb-2 text-sm font-semibold text-ink">{title}</h2>
       {children}
     </div>
@@ -279,8 +279,8 @@ function LedgerTable({ naive, sluice }: { naive: LedgerRow[]; sluice: LedgerRow[
   return (
     <div className="grid grid-cols-2 gap-3 text-xs">
       <div>
-        <p className="mb-1 font-semibold text-ink/60">without sluice</p>
-        <ul className="max-h-72 space-y-1 overflow-y-auto font-mono text-ink/70">
+        <p className="mb-1 font-semibold text-ink-3">without sluice</p>
+        <ul className="max-h-72 space-y-1 overflow-y-auto font-mono text-ink-2">
           {naiveTail.map((r, i) => (
             <li key={`${r.intent}-${String(r.attempt)}-${String(i)}`}>
               {r.intent} · attempt {r.attempt}
@@ -289,8 +289,8 @@ function LedgerTable({ naive, sluice }: { naive: LedgerRow[]; sluice: LedgerRow[
         </ul>
       </div>
       <div>
-        <p className="mb-1 font-semibold text-amber">with sluice</p>
-        <ul className="max-h-72 space-y-1 overflow-y-auto font-mono text-ink/70">
+        <p className="mb-1 font-semibold text-fail-ink">with sluice</p>
+        <ul className="max-h-72 space-y-1 overflow-y-auto font-mono text-ink-2">
           {sluiceTail.map((r, i) => (
             <li key={`${r.intent}-${String(r.attempt)}-${String(i)}`}>
               {r.intent} · attempt {r.attempt}

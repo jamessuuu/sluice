@@ -2,3 +2,8 @@
 *.png binary
 *.jpg binary
 *.woff2 binary
+
+# The vendored design substrate is hash-compared against the canonical package
+# (PORTFOLIO-DESIGN-DNA.md gate G11). Line-ending normalisation would change those
+# bytes on checkout and fail the gate for a reason that has nothing to do with design.
+apps/web/public/substrate/** -text

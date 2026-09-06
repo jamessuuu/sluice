@@ -1,0 +1,372 @@
+/*!
+ * substrate.css — the portfolio design substrate, v1.0.0
+ * Source of truth: C:\Users\admin\.claude\quality-harness\PORTFOLIO-DESIGN-DNA.md §3
+ * (type §3.1, colour §3.2, depth §3.3, corners §3.4, grid/spacing §3.5).
+ *
+ * Plain CSS custom properties. No framework, no build step required. This file is
+ * byte-identical across every consuming repo (gate G11) — do not fork it per project;
+ * the only thing that may vary per project is identity.json (DNA §4) and its one
+ * generated line: `:root { --signal-h: <hue>; }`.
+ *
+ * DEFAULT LIGHTING: DAYLIGHT. This is a deliberate override of DNA §1's "dusk is the
+ * default" pending design-strategist's answer to the open question at DNA §13.1 — it
+ * matches the binding contract at agentjames/docs/DESIGN.md ("engineering paper in
+ * daylight, no dark chrome, no glow") so nothing is blocked while the question is open.
+ * Both lightings are fully implemented; switching the default is documented at the
+ * "SWITCH DEFAULT LIGHTING" marker below.
+ *
+ * Fonts: Archivo (variable, wght 400-600 x wdth 85-125 — restricted to the range
+ * DNA §3.1's own scale actually uses, not the full 100-900 x 62-125 design space),
+ * Commit Mono (variable, wght 400-700 — no official variable release exists upstream;
+ * this build interpolates the official static Regular/Bold masters with fonttools
+ * varLib, see fonts/NOTICE.md), Newsreader (Regular + Italic, instanced at wght=400
+ * opsz=20 from the official variable release — see fonts/NOTICE.md for why Instrument
+ * Serif was replaced and why this instance was chosen). All OFL 1.1, all subset to the
+ * Google Fonts "latin" range. See fonts/LICENSE-*.txt.
+ */
+
+/* ============================================================ 1. FONTS ============ */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("./fonts/archivo-variable.woff2") format("woff2-variations"), url("./fonts/archivo-variable.woff2") format("woff2");
+  font-weight: 400 600;
+  font-stretch: 85% 125%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Commit Mono";
+  src: url("./fonts/commit-mono-variable.woff2") format("woff2-variations"), url("./fonts/commit-mono-variable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("./fonts/newsreader-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("./fonts/newsreader-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Metric-matched local fallbacks so font-display: swap contributes zero CLS (DNA §3.1).
+   Method + formula: unjs/fontaine (MIT) — size-adjust from the xAvgCharWidth ratio,
+   ascent/descent/line-gap-override rebased onto the adjusted em. Fallback metrics from
+   seek-oss/capsize (MIT) entireMetricsCollection.json. Numbers measured against this
+   package's own built font files; see README.md "Metric-matched fallbacks" for the
+   worked numbers and sources. */
+@font-face {
+  font-family: "Archivo Fallback";
+  src: local("Arial");
+  size-adjust: 122.7%;
+  ascent-override: 71.56%;
+  descent-override: 17.11%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Newsreader Fallback";
+  src: local("Georgia");
+  size-adjust: 122.25%;
+  ascent-override: 60.12%;
+  descent-override: 21.68%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Newsreader Fallback";
+  src: local("Georgia");
+  font-style: italic;
+  size-adjust: 117.09%;
+  ascent-override: 62.77%;
+  descent-override: 22.63%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Commit Mono Fallback";
+  src: local("Courier New");
+  size-adjust: 99.98%;
+  ascent-override: 90.01%;
+  descent-override: 20%;
+  line-gap-override: 0%;
+}
+
+/* ====================================================== 2. TYPE FACES + SCALE ===== */
+
+:root {
+  /* Face stacks. system-ui appears only after a real face is named (gate G2). */
+  --font-structure: "Archivo", "Archivo Fallback", Arial, sans-serif;
+  --font-data: "Commit Mono", "Commit Mono Fallback", "Courier New", monospace;
+  --font-voice: "Newsreader", "Newsreader Fallback", Georgia, serif;
+
+  /* Width-axis instances Archivo's scale actually uses (DNA §3.1). */
+  --wdth-dense: 85;   /* dense table headers, micro-caps labels */
+  --wdth-ui: 100;     /* UI, nav, buttons, body */
+  --wdth-h3: 100;
+  --wdth-h2: 112;
+  --wdth-display: 125; /* h1, instrument labels */
+
+  /* Fluid scale, 390px -> 1440px, 4px baseline (computed, not eyeballed: see
+     README.md "Type scale math" for the slope/intercept per row). */
+  --text-micro: clamp(0.6875rem, 0.6643rem + 0.0952vw, 0.75rem);
+  --text-label: clamp(0.75rem, 0.7268rem + 0.0952vw, 0.8125rem);
+  --text-body-s: clamp(0.875rem, 0.8518rem + 0.0952vw, 0.9375rem);
+  --text-body: clamp(1rem, 0.9768rem + 0.0952vw, 1.0625rem);
+  --text-lead: clamp(1.1875rem, 1.1411rem + 0.1905vw, 1.3125rem);
+  --text-h3: clamp(1.375rem, 1.2821rem + 0.3810vw, 1.625rem);
+  --text-h2: clamp(1.75rem, 1.5179rem + 0.9524vw, 2.375rem);
+  --text-h1: clamp(2.5rem, 1.9429rem + 2.2857vw, 4rem);
+  --text-readout: clamp(3.5rem, 1.8286rem + 6.8571vw, 8rem);
+
+  --measure: 68ch; /* prose measure, DNA §3.1 */
+}
+
+/* Ready-to-use type roles (optional convenience layer for zero-dependency consumers;
+   Tailwind/@theme consumers instead reference the --text-*/--font-* variables above
+   directly and build their own utilities — see README.md "Adopting in a Tailwind repo"). */
+.sub-type-micro { font: 500 var(--text-micro) / 1.3 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.sub-type-label { font: 500 var(--text-label) / 1.3 var(--font-structure); font-stretch: var(--wdth-dense); letter-spacing: 0.03em; text-transform: uppercase; }
+.sub-type-body-s { font: 400 var(--text-body-s) / 1.5 var(--font-structure); font-stretch: var(--wdth-ui); }
+.sub-type-body-s-data { font: 400 var(--text-body-s) / 1.5 var(--font-data); font-variant-numeric: tabular-nums; }
+.sub-type-body { font: 400 var(--text-body) / 1.6 var(--font-structure); font-stretch: var(--wdth-ui); max-width: var(--measure); }
+.sub-type-lead { font: 400 var(--text-lead) / 1.45 var(--font-voice); max-width: var(--measure); }
+.sub-type-h3 { font: 600 var(--text-h3) / 1.25 var(--font-structure); font-stretch: var(--wdth-h3); }
+.sub-type-h2 { font: 600 var(--text-h2) / 1.1 var(--font-structure); font-stretch: var(--wdth-h2); }
+.sub-type-h1 { font: 600 var(--text-h1) / 1.02 var(--font-structure); font-stretch: var(--wdth-display); letter-spacing: -0.015em; }
+.sub-type-readout { font: 500 var(--text-readout) / 0.92 var(--font-data); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* ============================================================ 3. COLOUR =========== */
+/* Authored in OKLCH, derived not picked. color-mix(... #000) is forbidden portfolio-
+   wide (DNA §3.2). Every substrate/chrome token holds C <= 0.02 (gate G4); chroma
+   above 0.06 is reserved for --signal, status and data marks. Measured contrast table
+   (both lightings, tools/contrast.mjs's colour science, reused not reimplemented) is
+   in README.md "Measured contrast" — every figure there is MEASURED, none PREDICTED. */
+
+/* ---- DAYLIGHT (default) --------------------------------------------------------- */
+/* SWITCH DEFAULT LIGHTING HERE: move the `:root,` token from this selector to the
+   `[data-lighting="dusk"]` block's selector below to flip the portfolio-wide default.
+   Both blocks are always fully self-contained; this is the only edit required. */
+:root,
+[data-lighting="daylight"] {
+  color-scheme: light;
+  --sub-0: oklch(0.965 0.008 82);
+  --sub-1: oklch(0.988 0.004 82);
+  --sub-2: oklch(1 0 0);
+  --sub-3: oklch(0.945 0.008 82);
+  --edge-lo: oklch(0.885 0.010 82);
+  --edge-hi: oklch(0.995 0.003 82);
+  --ink: oklch(0.205 0.016 68);
+  --ink-2: oklch(0.415 0.014 68);
+  --ink-3: oklch(0.505 0.014 68);
+  --shadow-ink: oklch(0.42 0.045 68);
+  /* The top-edge highlight inverts to a bottom edge in daylight (DNA §3.3). */
+  --depth-edge: inset 0 -1px 0 var(--edge-lo);
+
+  --signal: oklch(0.55 0.15 var(--signal-h));
+  --signal-ink: oklch(0.47 0.14 var(--signal-h));
+  --signal-glow: oklch(0.68 0.18 var(--signal-h));
+
+  --ok: oklch(0.55 0.15 152);
+  --ok-ink: oklch(0.47 0.14 152);
+  --ok-glow: oklch(0.68 0.18 152);
+  --warn: oklch(0.55 0.15 75);
+  --warn-ink: oklch(0.47 0.14 75);
+  --warn-glow: oklch(0.68 0.18 75);
+  --fail: oklch(0.55 0.15 27);
+  --fail-ink: oklch(0.47 0.14 27);
+  --fail-glow: oklch(0.68 0.18 27);
+  --info: oklch(0.55 0.15 232);
+  --info-ink: oklch(0.47 0.14 232);
+  --info-glow: oklch(0.68 0.18 232);
+}
+
+/* ---- DUSK ------------------------------------------------------------------------ */
+[data-lighting="dusk"] {
+  color-scheme: dark;
+  --sub-0: oklch(0.145 0.014 258);
+  --sub-1: oklch(0.185 0.014 258);
+  --sub-2: oklch(0.225 0.014 258);
+  --sub-3: oklch(0.265 0.013 258);
+  --edge-lo: oklch(0.30 0.012 258);
+  --edge-hi: oklch(0.42 0.012 258);
+  --ink: oklch(0.96 0.004 258);
+  --ink-2: oklch(0.79 0.008 258);
+  --ink-3: oklch(0.655 0.010 258);
+  --shadow-ink: oklch(0.08 0.030 262);
+  --depth-edge: inset 0 1px 0 var(--edge-hi);
+
+  --signal: oklch(0.72 0.16 var(--signal-h));
+  --signal-ink: oklch(0.80 0.13 var(--signal-h));
+  --signal-glow: oklch(0.86 0.19 var(--signal-h));
+
+  --ok: oklch(0.72 0.16 152);
+  --ok-ink: oklch(0.80 0.13 152);
+  --ok-glow: oklch(0.86 0.19 152);
+  --warn: oklch(0.72 0.16 75);
+  --warn-ink: oklch(0.80 0.13 75);
+  --warn-glow: oklch(0.86 0.19 75);
+  --fail: oklch(0.72 0.16 27);
+  --fail-ink: oklch(0.80 0.13 27);
+  --fail-glow: oklch(0.86 0.19 27);
+  --info: oklch(0.72 0.16 232);
+  --info-ink: oklch(0.80 0.13 232);
+  --info-glow: oklch(0.86 0.19 232);
+}
+
+:root {
+  /* The per-project hue (identity.json's `signal` field). >=25deg from every status
+     hue (152/75/27/232). 200 here is only the package's own placeholder/demo value —
+     every consuming repo overrides this one line from its identity.json. */
+  --signal-h: 200;
+  --signal-wash: color-mix(in oklab, var(--signal) 14%, var(--sub-1));
+}
+
+/* ============================================================ 4. DEPTH ============ */
+/* Three ingredients, in order (DNA §3.3): value step (the sub-0..3 ladder above),
+   top-edge highlight (--depth-edge, lighting-aware), contact shadow (below, chroma-
+   bearing, never black). Maximum one floating element per viewport. */
+
+:root {
+  --shadow-contact: 0 1px 2px -1px oklch(from var(--shadow-ink) l c h / 10%),
+                    0 8px 24px -6px oklch(from var(--shadow-ink) l c h / 14%);
+}
+
+.sub-raised {
+  /* A layer one substrate step above its parent, with the top-edge highlight. Compose
+     this harder for more lift (§3.3) rather than adding a bespoke box-shadow. */
+  box-shadow: var(--depth-edge);
+}
+
+.sub-float {
+  /* Reserve for the one genuinely floating element per viewport. */
+  box-shadow: var(--depth-edge), var(--shadow-contact);
+}
+
+/* ============================================================ 5. RADIUS =========== */
+
+:root {
+  --radius-structure: 0px; /* panels, bands, rules, tables, grids, instrument frames */
+  --radius-control: 3px;   /* buttons, inputs, chips, tabs, focus ring */
+  --radius-pill: 999px;    /* the live-status dot — exactly one element, portfolio-wide */
+  --chamfer: 12px;         /* the hero instrument frame's one cut corner (DNA §3.4) */
+}
+
+.sub-chamfer-tl { clip-path: polygon(var(--chamfer) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer)); }
+.sub-chamfer-tr { clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%); }
+.sub-chamfer-bl { clip-path: polygon(0 0, 100% 0, 100% 100%, var(--chamfer) 100%, 0 calc(100% - var(--chamfer))); }
+.sub-chamfer-br { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%); }
+
+/* ====================================================== 6. GRID + SPACING ========= */
+/* 4px base for type/component internals; 8px for layout (DNA §3.5). */
+
+:root {
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+  --space-24: 96px; --space-32: 128px;
+
+  /* Band vertical padding, fluid 390 -> 1440 (56/72 mobile, 96/128 desktop). */
+  --band-pad-sm: clamp(3.5rem, 2.5714rem + 3.8095vw, 6rem);   /* 56 -> 96 */
+  --band-pad-lg: clamp(4.5rem, 3.2rem + 5.3333vw, 8rem);      /* 72 -> 128 */
+
+  --grid-max: 1240px;
+  --grid-cols-mobile: 4;   --grid-gutter-mobile: 16px; --grid-margin-mobile: 20px;
+  --grid-cols-tablet: 8;   --grid-gutter-tablet: 20px;
+  --grid-cols-desktop: 12; --grid-gutter-desktop: 24px;
+}
+
+.sub-band {
+  /* Full-bleed horizontal plate. Alternate .sub-band[data-tone="1"] for --sub-1. */
+  background: var(--sub-0);
+  border-top: 1px solid var(--edge-lo);
+  padding-block: var(--band-pad-sm);
+}
+.sub-band[data-tone="1"] { background: var(--sub-1); }
+@media (min-width: 1280px) {
+  .sub-band { padding-block: var(--band-pad-lg); }
+}
+
+.sub-container {
+  display: grid;
+  margin-inline: auto;
+  max-width: var(--grid-max);
+  padding-inline: var(--grid-margin-mobile);
+  grid-template-columns: repeat(var(--grid-cols-mobile), 1fr);
+  gap: var(--grid-gutter-mobile);
+}
+@media (min-width: 768px) {
+  .sub-container {
+    padding-inline: var(--space-8);
+    grid-template-columns: repeat(var(--grid-cols-tablet), 1fr);
+    gap: var(--grid-gutter-tablet);
+  }
+}
+@media (min-width: 1280px) {
+  .sub-container {
+    padding-inline: var(--space-8);
+    grid-template-columns: repeat(var(--grid-cols-desktop), 1fr);
+    gap: var(--grid-gutter-desktop);
+  }
+}
+
+/* ====================================================== 7. FOCUS + BASELINE ======= */
+
+:root {
+  --focus-ring: 0 0 0 2px var(--sub-0), 0 0 0 4px var(--signal);
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-control);
+}
+
+.sub-skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -100%;
+  z-index: 100;
+  background: var(--sub-2);
+  color: var(--ink);
+  font: 500 var(--text-body-s) var(--font-structure);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  box-shadow: var(--depth-edge), var(--shadow-contact);
+}
+.sub-skip-link:focus-visible {
+  top: var(--space-2);
+}
+
+/* Accessibility floor only — interaction-designer owns the full reduced-motion
+   variant system (DNA §5): what settles instantly, what cross-fades, what a status
+   dot becomes. This is the safety net under whatever they specify on top. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background: var(--sub-0);
+  color: var(--ink);
+  font: 400 var(--text-body) / 1.6 var(--font-structure);
+  font-stretch: var(--wdth-ui);
+}
+code, pre, kbd, samp {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}

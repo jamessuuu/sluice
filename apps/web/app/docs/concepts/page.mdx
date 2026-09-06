@@ -38,7 +38,7 @@ the response, so it retried an operation that had already run.
 ## The one edge that matters
 
 Look at the diagram again: two of the three outgoing arrows from `in_flight`
-are ordinary outcomes. The third — `indeterminate` — is drawn in amber
+are ordinary outcomes. The third — `indeterminate` — is drawn in the signal colour
 because it behaves differently from the other two in one specific way. Both
 `succeeded` and `failed` are outcomes a caller can act on immediately and
 completely: replay the result, or know the effect never ran.

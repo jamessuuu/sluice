@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<!-- sprite.svg -- 14-glyph stroke vocabulary, PORTFOLIO-DESIGN-DNA.md SS3.6.
+24px box, 1.5px stroke, square caps, miter joins, angles restricted to 0/45/90,
+one circle primitive (r=3: node, edge), one chamfer construction (frame).
+No icon library; Lucide is banned by name. See GLYPHS.md for the justification
+of each of the 14 and the correct <use> pattern (currentColor theming needs the
+sprite inlined in the document -- a bare external-file <use href="sprite.svg#...">
+renders an empty box in Chromium; verified, not assumed). -->
+<style>symbol{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}</style>
+<symbol id="icon-arrow-right" viewBox="0 0 24 24">
+<polyline points="4,12 18,12"/><polyline points="12,6 18,12 12,18"/>
+</symbol>
+<symbol id="icon-arrow-external" viewBox="0 0 24 24">
+<rect x="5" y="8" width="11" height="11"/><polyline points="11,5 19,5 19,13"/><line x1="19" y1="5" x2="11" y2="13"/>
+</symbol>
+<symbol id="icon-chevron-down" viewBox="0 0 24 24">
+<polyline points="6,9 12,15 18,9"/>
+</symbol>
+<symbol id="icon-copy" viewBox="0 0 24 24">
+<rect x="8" y="8" width="10" height="12"/><polyline points="6,14 6,4 16,4 16,6"/>
+</symbol>
+<symbol id="icon-check" viewBox="0 0 24 24">
+<polyline points="5,13 10,18 18,10"/>
+</symbol>
+<symbol id="icon-close" viewBox="0 0 24 24">
+<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+</symbol>
+<symbol id="icon-plus" viewBox="0 0 24 24">
+<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+</symbol>
+<symbol id="icon-node" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="3"/>
+</symbol>
+<symbol id="icon-edge" viewBox="0 0 24 24">
+<circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><line x1="8.1" y1="15.9" x2="15.9" y2="8.1"/>
+</symbol>
+<symbol id="icon-file" viewBox="0 0 24 24">
+<polyline points="7,4 7,20 17,20 17,9 12,4 7,4"/><polyline points="12,4 12,9 17,9"/>
+</symbol>
+<symbol id="icon-code" viewBox="0 0 24 24">
+<polyline points="9,7 4,12 9,17"/><polyline points="15,7 20,12 15,17"/>
+</symbol>
+<symbol id="icon-grid" viewBox="0 0 24 24">
+<rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/>
+</symbol>
+<symbol id="icon-warn" viewBox="0 0 24 24">
+<rect x="5" y="5" width="14" height="14"/><line x1="12" y1="9" x2="12" y2="14"/><rect x="11" y="16" width="2" height="2" fill="currentColor" stroke="none"/>
+</symbol>
+<symbol id="icon-frame" viewBox="0 0 24 24">
+<polyline points="15,4 19,8 19,20 5,20 5,4 15,4"/>
+</symbol>
+</svg>

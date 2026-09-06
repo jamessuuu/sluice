@@ -25,7 +25,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         <ul className="flex gap-x-4 whitespace-nowrap text-sm sm:block sm:space-y-1 sm:whitespace-normal">
           {NAV.map((item) => (
             <li key={item.href}>
-              <Link href={item.href} className="block py-1 text-ink/70 hover:text-ink">
+              <Link href={item.href} className="block py-1 text-ink-2 hover:text-ink">
                 {item.label}
               </Link>
             </li>

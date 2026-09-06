@@ -10,17 +10,17 @@ import { Attribution } from "./attribution";
  *
  * The maker line is the shared attribution kit (attribution-kit v1): the chip mark
  * inline in currentColor, the portfolio and LinkedIn links with rel="me".
+ *
+ * Band 6's other half (PORTFOLIO-DESIGN-DNA.md §4.2, INSTALL + COLOPHON): it takes
+ * the same --edge-lo hairline and the same 1240px measure as every band above it.
  */
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-rule">
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 px-6 py-10 text-sm text-ink/70 sm:flex-row sm:items-center sm:justify-between">
-        <Attribution linkClassName="text-ink underline decoration-rule underline-offset-2 hover:decoration-amber" />
+    <footer className="border-t border-edge-lo bg-sub-1 py-10">
+      <div className="band-inner t-body-s flex flex-col gap-3 text-ink-2 sm:flex-row sm:items-center sm:justify-between">
+        <Attribution linkClassName="text-ink underline decoration-edge-lo underline-offset-2 hover:decoration-signal" />
         <div className="flex items-center gap-4">
-          <a
-            className="hover:text-ink"
-            href="https://github.com/jamessuuu/sluice"
-          >
+          <a className="hover:text-ink" href="https://github.com/jamessuuu/sluice">
             github.com/jamessuuu/sluice
           </a>
           <Link className="hover:text-ink" href="/docs/limitations">

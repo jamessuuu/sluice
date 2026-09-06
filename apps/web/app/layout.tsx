@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Footer } from "@/components/footer";
 import { SiteNav } from "@/components/site-nav";
+import { SubstrateSprite } from "@/components/substrate-sprite";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -45,10 +46,28 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="flex min-h-screen flex-col bg-paper text-ink antialiased">
+    // data-lighting is written at render time from identity.json's `lighting` field
+    // (daylight — agentjames/docs/DESIGN.md's binding "engineering paper in daylight"
+    // contract, PORTFOLIO-DESIGN-DNA.md §13.1 still open). Setting it on the server
+    // is what stops the page depending on substrate.css's bare CSS-only fallback, so
+    // there is never an unlit first frame.
+    <html lang="en" data-lighting="daylight">
+      <head>
+        {/* The shared spine, byte-identical across every project repo (gate G11).
+            Linked rather than bundled so the hash on disk is the hash that ships. */}
+        <link rel="preload" href="/substrate/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/substrate/fonts/commit-mono-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="/substrate/substrate.css" />
+      </head>
+      <body className="flex min-h-screen flex-col antialiased">
+        <a className="sub-skip-link" href="#main">
+          Skip to content
+        </a>
+        <SubstrateSprite />
         <SiteNav />
-        <main className="flex-1">{children}</main>
+        <main id="main" className="flex-1">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

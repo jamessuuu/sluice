@@ -1,0 +1,11 @@
+{
+  "signal": 195,
+  "instrument": {
+    "generator": "state-machine",
+    "artifact": "chaos/results/latest.json"
+  },
+  "glyph": "sluice-gate",
+  "lighting": "daylight",
+  "voice": "An unknown outcome is not a failure, and the distance between those two words is the whole library.",
+  "chamfer": "tr"
+}

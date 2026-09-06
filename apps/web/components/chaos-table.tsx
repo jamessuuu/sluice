@@ -40,8 +40,8 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 export function ChaosTable() {
   const r = results;
   return (
-    <div className="border border-rule">
-      <div className="border-b border-rule bg-ink/5 px-4 py-2 font-mono text-xs text-ink/70">
+    <div className="raised border border-edge-lo">
+      <div className="t-micro border-b border-edge-lo bg-sub-3 px-4 py-3 text-ink-3">
         golden {r.golden.passed}/{r.golden.total} · fuzz {r.fuzz.seeds} seeds · {r.harness.invariantViolations}{" "}
         invariant violations · git {r.gitSha.slice(0, 7)}
       </div>
@@ -52,35 +52,35 @@ export function ChaosTable() {
           below — same defect, same fix pattern (ui-audit.md 3.4): short
           numeric/prose tables get their own overflow-x-auto wrapper. */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-sm">
+        <table className="t-data-s w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-rule">
-              <th className="px-4 py-2 font-semibold text-ink">metric</th>
-              <th className="px-4 py-2 font-semibold text-ink">naive retry (no sluice)</th>
-              <th className="px-4 py-2 font-semibold text-ink">with sluice</th>
+            <tr className="border-b border-edge-lo">
+              <th className="t-label px-4 py-3 text-ink-3">metric</th>
+              <th className="t-label px-4 py-3 text-ink-3">naive retry (no sluice)</th>
+              <th className="t-label px-4 py-3 text-ink-3">with sluice</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-rule">
-              <td className="px-4 py-2 text-ink/80">intent success rate</td>
+            <tr className="border-b border-edge-lo">
+              <td className="px-4 py-2 text-ink-2">intent success rate</td>
               <td className="px-4 py-2">{pct(r.baseline.naive.successRate)}</td>
               <td className="px-4 py-2">
                 {pct(r.baseline.sluice.successRate)}{" "}
-                <span className="text-ink/60">
+                <span className="text-ink-3">
                   ({pct(r.baseline.sluice.failClosedRate)} fail closed — parked{" "}
                   <code className="font-mono">indeterminate</code>, never silent)
                 </span>
               </td>
             </tr>
             <tr>
-              <td className="px-4 py-2 text-ink/80">duplicate side effects</td>
-              <td className="px-4 py-2 font-semibold text-ink">{fmt(r.baseline.naive.duplicateEffects)}</td>
-              <td className="px-4 py-2 font-semibold text-amber">{fmt(r.baseline.sluice.duplicateEffects)}</td>
+              <td className="px-4 py-2 text-ink-2">duplicate side effects</td>
+              <td className="px-4 py-2 text-fail-ink">{fmt(r.baseline.naive.duplicateEffects)}</td>
+              <td className="px-4 py-2 text-signal-ink">{fmt(r.baseline.sluice.duplicateEffects)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div className="space-y-1 border-t border-rule px-4 py-3 text-xs text-ink/60">
+      <div className="t-body-s space-y-2 border-t border-edge-lo px-4 py-4 text-ink-3">
         <p>
           Baseline workload: {fmt(r.baseline.workload.intents * r.baseline.workload.seeds)} intents delivered{" "}
           {r.baseline.workload.deliveries[0]}–{r.baseline.workload.deliveries[1]}× each under{" "}
@@ -100,7 +100,7 @@ export function ChaosTable() {
           {fmt(r.harness.totalIntents)} intents · {fmt(r.harness.totalDeliveries)} deliveries. Regenerate with{" "}
           <code className="font-mono">pnpm chaos</code> — full tables in{" "}
           <a
-            className="text-amber underline decoration-amber/40 underline-offset-2 hover:decoration-amber"
+            className="link-signal"
             href="https://github.com/jamessuuu/sluice/blob/main/chaos/RESULTS.md"
           >
             chaos/RESULTS.md

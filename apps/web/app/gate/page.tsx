@@ -121,7 +121,7 @@ export default function GatePage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="mb-2 text-2xl font-semibold tracking-tight text-ink">Gate walkthrough</h1>
-      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink/70">
+      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink-2">
         A scripted &quot;publish the weekly digest&quot; opens a real approval gate — the same{" "}
         <code className="font-mono">gates.open()</code> your code would call. The worker that
         opened it gets killed after two seconds. The gate survives anyway, including a real
@@ -130,12 +130,12 @@ export default function GatePage() {
       </p>
 
       {errorMsg !== null && (
-        <p className="mb-6 border border-amber px-4 py-2 text-sm text-amber" role="alert">
+        <p className="mb-6 border border-fail px-4 py-2 text-sm text-fail-ink" role="alert">
           {errorMsg}
         </p>
       )}
 
-      <section className="mb-6 border border-rule px-5 py-4" data-testid="worker-panel">
+      <section className="mb-6 border border-edge-lo px-5 py-4" data-testid="worker-panel">
         <h2 className="mb-2 text-sm font-semibold text-ink">Worker</h2>
         {step === "start" && crashPanel === "idle" && (
           <button
@@ -143,28 +143,28 @@ export default function GatePage() {
             data-testid="start-worker-button"
             onClick={handleStartWorker}
             disabled={busy}
-            className="border border-ink bg-ink px-5 py-2 text-sm font-semibold text-paper hover:bg-ink/80 disabled:opacity-50"
+            className="border border-signal bg-signal px-5 py-2 text-sm font-semibold text-sub-2 hover:bg-signal-ink disabled:opacity-50"
           >
             Start worker
           </button>
         )}
         {crashPanel === "running" && (
-          <p data-testid="worker-status" className="font-mono text-sm text-ink/70">
+          <p data-testid="worker-status" className="font-mono text-sm text-ink-2">
             ● running — opening the gate…
           </p>
         )}
         {crashPanel === "crashed" && (
-          <p data-testid="worker-status" className="font-mono text-sm text-amber">
+          <p data-testid="worker-status" className="font-mono text-sm text-fail-ink">
             ✕ crashed (killed by the browser) — the gate is still here.
           </p>
         )}
       </section>
 
       {view?.gate != null && (
-        <section className="mb-6 border border-rule px-5 py-4" data-testid="pending-card">
+        <section className="mb-6 border border-edge-lo px-5 py-4" data-testid="pending-card">
           <h2 className="mb-2 text-sm font-semibold text-ink">{view.gate.presentation?.title ?? view.gate.key}</h2>
-          <p className="mb-3 text-sm text-ink/70">{view.gate.presentation?.summary}</p>
-          <p className="mb-3 font-mono text-xs text-ink/50">
+          <p className="mb-3 text-sm text-ink-2">{view.gate.presentation?.summary}</p>
+          <p className="mb-3 font-mono text-xs text-ink-3">
             status: <span className="text-ink">{view.gate.status}</span>
           </p>
           {step === "pending" && (
@@ -174,7 +174,7 @@ export default function GatePage() {
                 data-testid="approve-button"
                 disabled={busy}
                 onClick={() => void runCommand("approve")}
-                className="border border-amber bg-amber px-4 py-2 text-sm font-semibold text-paper hover:bg-amber/90 disabled:opacity-50"
+                className="border border-fail bg-signal px-4 py-2 text-sm font-semibold text-sub-2 hover:bg-signal-ink disabled:opacity-50"
               >
                 Approve
               </button>
@@ -183,7 +183,7 @@ export default function GatePage() {
                 data-testid="reject-button"
                 disabled={busy}
                 onClick={() => void runCommand("reject")}
-                className="border border-rule px-4 py-2 text-sm text-ink hover:border-ink disabled:opacity-50"
+                className="border border-edge-lo px-4 py-2 text-sm text-ink hover:border-signal disabled:opacity-50"
               >
                 Reject
               </button>
@@ -195,17 +195,17 @@ export default function GatePage() {
               data-testid="resume-button"
               disabled={busy}
               onClick={() => void runCommand("resume")}
-              className="border border-ink bg-ink px-5 py-2 text-sm font-semibold text-paper hover:bg-ink/80 disabled:opacity-50"
+              className="border border-signal bg-signal px-5 py-2 text-sm font-semibold text-sub-2 hover:bg-signal-ink disabled:opacity-50"
             >
               Start worker (resume from resumeContext)
             </button>
           )}
           {step === "published" && (
-            <p data-testid="publish-status" className="font-mono text-sm text-amber">
+            <p data-testid="publish-status" className="font-mono text-sm text-fail-ink">
               ✓ published — side effect fired {view.publishCount} time{view.publishCount === 1 ? "" : "s"}.
             </p>
           )}
-          {step === "rejected" && <p className="font-mono text-sm text-ink/70">rejected — no side effect ran.</p>}
+          {step === "rejected" && <p className="font-mono text-sm text-ink-2">rejected — no side effect ran.</p>}
         </section>
       )}
 
@@ -216,7 +216,7 @@ export default function GatePage() {
             data-testid="replay-button"
             disabled={busy}
             onClick={() => void runCommand("replay")}
-            className="border border-rule px-4 py-2 text-sm text-ink hover:border-ink disabled:opacity-50"
+            className="border border-edge-lo px-4 py-2 text-sm text-ink hover:border-signal disabled:opacity-50"
           >
             Replay everything
           </button>
@@ -224,23 +224,23 @@ export default function GatePage() {
             type="button"
             data-testid="reset-button"
             onClick={handleReset}
-            className="ml-3 border border-rule px-4 py-2 text-sm text-ink/60 hover:border-ink hover:text-ink"
+            className="ml-3 border border-edge-lo px-4 py-2 text-sm text-ink-3 hover:border-signal hover:text-ink"
           >
             Reset demo
           </button>
         </section>
       )}
 
-      <section className="border border-rule px-5 py-4">
+      <section className="border border-edge-lo px-5 py-4">
         <h2 className="mb-2 text-sm font-semibold text-ink">Audit trail</h2>
-        <ul data-testid="audit-log" className="space-y-1 font-mono text-xs text-ink/70">
+        <ul data-testid="audit-log" className="space-y-1 font-mono text-xs text-ink-2">
           {log.length === 0 && <li className="text-ink/40">Nothing yet.</li>}
           {log.map((line, i) => (
             <li key={`${String(i)}-${line}`}>{line}</li>
           ))}
         </ul>
         {view !== null && view.events.length > 0 && (
-          <ul className="mt-3 space-y-0.5 border-t border-rule pt-3 font-mono text-xs text-ink/50">
+          <ul className="mt-3 space-y-0.5 border-t border-edge-lo pt-3 font-mono text-xs text-ink-3">
             {view.events.map((e) => (
               <li key={e.id}>
                 #{e.seq} {e.type} ({e.subjectKey})

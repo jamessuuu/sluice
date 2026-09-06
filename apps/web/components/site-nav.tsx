@@ -1,5 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
+
+import { ProjectGlyph } from "./project-glyph";
 
 const LINKS = [
   { href: "/docs/quickstart", label: "docs" },
@@ -10,15 +11,18 @@ const LINKS = [
 
 export function SiteNav() {
   return (
-    <header className="border-b border-rule">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/brand/glyph.svg" alt="" width={22} height={22} aria-hidden />
-          <span className="font-mono text-sm font-semibold tracking-tight text-ink">sluice</span>
+    <header className="border-b border-edge-lo bg-sub-1">
+      {/* Same 1240px measure and gutters as every band (.band-inner), so the nav's
+          left edge lines up with the wordmark and the instrument frame below it
+          instead of sitting on its own narrower rail. */}
+      <div className="band-inner flex items-center justify-between gap-6 py-4">
+        <Link href="/" className="flex items-center gap-2 text-ink">
+          <ProjectGlyph size={22} decorative />
+          <span className="t-label">sluice</span>
         </Link>
-        <nav className="flex items-center gap-5 text-sm text-ink/70">
+        <nav className="flex items-center gap-5">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="hover:text-ink">
+            <Link key={l.href} href={l.href} className="t-label text-ink-2 hover:text-ink">
               {l.label}
             </Link>
           ))}

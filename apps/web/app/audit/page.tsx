@@ -45,7 +45,7 @@ export default function AuditPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="mb-2 text-2xl font-semibold tracking-tight text-ink">Audit trail</h1>
-      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink/70">
+      <p className="mb-8 max-w-2xl text-sm leading-6 text-ink-2">
         A fixture trail from the real core — hash-chained the same way{" "}
         <code className="font-mono">sluice-store-postgres</code> chains it in SQL. &quot;Verify
         chain&quot; recomputes every hash in this browser tab with the pure, store-free{" "}
@@ -59,7 +59,7 @@ export default function AuditPage() {
           data-testid="verify-button"
           onClick={verify}
           disabled={events === null}
-          className="border border-ink bg-ink px-5 py-2 text-sm font-semibold text-paper hover:bg-ink/80 disabled:opacity-50"
+          className="border border-signal bg-signal px-5 py-2 text-sm font-semibold text-sub-2 hover:bg-signal-ink disabled:opacity-50"
         >
           Verify chain
         </button>
@@ -68,14 +68,14 @@ export default function AuditPage() {
           data-testid="tamper-button"
           onClick={tamper}
           disabled={events === null || tampered}
-          className="border border-amber px-5 py-2 text-sm font-semibold text-amber hover:bg-amber/10 disabled:opacity-50"
+          className="border border-fail px-5 py-2 text-sm font-semibold text-fail-ink hover:bg-sub-3 disabled:opacity-50"
         >
           Tamper
         </button>
         <button
           type="button"
           onClick={load}
-          className="border border-rule px-5 py-2 text-sm text-ink/60 hover:border-ink hover:text-ink"
+          className="border border-edge-lo px-5 py-2 text-sm text-ink-3 hover:border-signal hover:text-ink"
         >
           Reset fixture
         </button>
@@ -86,7 +86,7 @@ export default function AuditPage() {
           data-testid="verify-result"
           role="status"
           className={`mb-6 border px-4 py-2 text-sm font-semibold ${
-            result.ok ? "border-rule text-ink" : "border-amber text-amber"
+            result.ok ? "border-edge-lo text-ink" : "border-fail text-fail-ink"
           }`}
         >
           {result.ok
@@ -95,10 +95,10 @@ export default function AuditPage() {
         </p>
       )}
 
-      <div className="overflow-x-auto border border-rule">
+      <div className="overflow-x-auto border border-edge-lo">
         <table className="w-full border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b border-rule bg-ink/5">
+            <tr className="border-b border-edge-lo bg-sub-3">
               <th className="px-3 py-2 font-semibold text-ink">seq</th>
               <th className="px-3 py-2 font-semibold text-ink">type</th>
               <th className="px-3 py-2 font-semibold text-ink">subject</th>
@@ -114,13 +114,13 @@ export default function AuditPage() {
                   key={e.id}
                   data-testid="audit-row"
                   data-broken={broken}
-                  className={`border-t border-rule font-mono ${broken ? "bg-amber/10" : ""}`}
+                  className={`border-t border-edge-lo font-mono ${broken ? "bg-sub-3" : ""}`}
                 >
-                  <td className="px-3 py-1.5 text-ink/70">{e.seq}</td>
+                  <td className="px-3 py-1.5 text-ink-2">{e.seq}</td>
                   <td className="px-3 py-1.5 text-ink">{e.type}</td>
-                  <td className="px-3 py-1.5 text-ink/70">{e.subjectKey}</td>
-                  <td className="px-3 py-1.5 text-ink/50">{shortHash(e.prevHash)}</td>
-                  <td className={`px-3 py-1.5 ${broken ? "text-amber" : "text-ink/50"}`}>
+                  <td className="px-3 py-1.5 text-ink-2">{e.subjectKey}</td>
+                  <td className="px-3 py-1.5 text-ink-3">{shortHash(e.prevHash)}</td>
+                  <td className={`px-3 py-1.5 ${broken ? "text-fail-ink" : "text-ink-3"}`}>
                     {shortHash(e.hash)}
                   </td>
                 </tr>

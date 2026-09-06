@@ -18,6 +18,8 @@
     "ci:pack-check": "node scripts/pack-check.mjs",
     "brand": "node scripts/brand.mjs --project=sluice --out=apps/web/public/brand",
     "diagram": "node scripts/diagram.mjs --out=apps/web/public/diagram",
+    "identity": "node scripts/identity-css.mjs",
+    "design:snapshot": "node scripts/design-snapshot.mjs",
     "test:e2e": "pnpm --filter @jamessuuu/sluice-web run test:e2e"
   },
   "devDependencies": {

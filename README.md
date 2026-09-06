@@ -112,6 +112,33 @@ Zero runtime dependencies. No LLM anywhere. No telemetry.
 The npm scope is `@jamessuuu` because the unscoped name is an abandoned 2013
 package; the CLI binary and this repo are the identity.
 
+### The site's design
+
+`apps/web` consumes the shared portfolio design substrate
+(`PORTFOLIO-DESIGN-DNA.md` §3/§4), vendored unmodified into
+`apps/web/public/substrate/` — one plain-CSS file, one 14-glyph SVG sprite, four
+woff2 faces. That directory is hash-compared against the canonical package
+(gate G11) and must never be hand-edited; `apps/web/app/globals.css` only points
+Tailwind's `@theme` at the same custom properties, and authors no colour,
+typeface, radius or spacing step of its own (gate G1).
+
+Everything this project is allowed to vary lives in `identity.json` (six fields:
+signal hue, instrument, glyph, lighting, voice, chamfer). `pnpm identity`
+regenerates `apps/web/app/globals.css`'s companion `identity.css` from it — one
+line, one hue. Nothing else about the design is per-project.
+
+The landing hero is generated at build time from `chaos/results/latest.json`:
+`apps/web/components/instrument.tsx` draws one square per duplicate side effect,
+so the picture cannot drift from the artifact — regenerate both with `pnpm chaos`.
+
+To re-run the design gates:
+
+```
+pnpm --filter @jamessuuu/sluice-web build
+pnpm design:snapshot          # assembles apps/web/out for the verifier
+node <substrate-kit>/verify.mjs --repo .
+```
+
 ## CLI
 
 ```bash

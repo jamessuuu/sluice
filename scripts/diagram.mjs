@@ -2,11 +2,11 @@
  * Mechanism diagram generator — sluice's one diagram, per
  * showcase-program/DESIGN-DIRECTION.md: "the four-state effect machine —
  * in_flight -> succeeded / failed / indeterminate, with the fail-closed edge
- * in amber, because that one edge is the argument."
+ * in the signal colour, because that one edge is the argument."
  *
  * Same conventions as scripts/brand.mjs: deterministic (no Math.random, no
  * webfont, no network, no date stamping), same house palette, ink strokes,
- * exactly one amber element, 0-2px radius, no gradients, no drop shadows.
+ * exactly one signal-coloured element, no gradients, no drop shadows.
  * Stroke weights are derived from the same 64-unit grid brand.mjs draws
  * glyphs on, so a diagram reads as the same instrument at any size — the
  * canvas itself is larger because a state machine needs room for four boxes
@@ -18,25 +18,30 @@
  * is the only status with no automatic path back to `in_flight` — reclaiming
  * it requires an explicit `onIndeterminate: 'reclaim'` call or a human
  * decision through a gate (docs/failure-modes F2-F4). That asymmetry — not
- * a stylistic choice — is why its edge is the one amber element.
+ * a stylistic choice — is why its edge is the one signal-coloured element.
  *
  * Usage:  node scripts/diagram.mjs --out=apps/web/public/diagram
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// docs/DESIGN.md palette (BRAND-KIT.md — binding). Do not invent colours.
-const PAPER = "#FAF7F2";
-const INK = "#1A1712";
-const AMBER = "#B45309";
-const RULE = "#E4DDD3";
+// PORTFOLIO-DESIGN-DNA.md §3.2 — the shared substrate's tokens, referenced, not
+// re-picked. This file used to bake four hex values from the retired PAPER/INK/AMBER/
+// RULE palette; it now emits var() references, which resolve because the diagram is
+// INLINED into the page DOM (diagram-figure.tsx) rather than loaded as <img src>. The
+// diagram therefore follows the page's lighting and the project's signal hue for free,
+// and this generator authors no colour of its own (gate G1's spirit, one layer up).
+const PAPER = "var(--sub-2)";
+const INK = "var(--ink)";
+const AMBER = "var(--signal)";
+const RULE = "var(--edge-lo)";
 
 const G = 64; // the same grid unit scripts/brand.mjs draws glyphs on
 const SW = (G * 0.047).toFixed(3); // standard stroke — matches brand.mjs
 const SWH = (G * 0.031).toFixed(3); // hairline — matches brand.mjs
 // Single-quoted family names: this string is embedded inside a
 // double-quoted SVG/XML attribute, so it must not contain literal `"`.
-const MONO = "ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Consolas, 'Liberation Mono', monospace";
+const MONO = "var(--font-data), ui-monospace, monospace";
 
 const W = 720;
 const H = 424;
@@ -77,7 +82,7 @@ function box({ x, y, w, h }, label, subLines = [], { strong = false } = {}) {
   ].join("");
 }
 
-/** A right-pointing ink or amber arrowhead, tip at (x, y). */
+/** A right-pointing ink or signal-coloured arrowhead, tip at (x, y). */
 function arrowhead(x, y, color) {
   const s = 9;
   return `<path d="M${(x - s).toFixed(1)} ${(y - s * 0.62).toFixed(1)} L${x.toFixed(1)} ${y.toFixed(1)} L${(x - s).toFixed(1)} ${(y + s * 0.62).toFixed(1)} Z" fill="${color}"/>`;
@@ -131,7 +136,7 @@ function main() {
   parts.push(box(FAILED, "failed", ["provably did not", "happen"]));
   parts.push(box(INDETERMINATE, "indeterminate", ["we do not know"], { strong: true }));
 
-  // The fail-closed caption, set on the amber branch — the entire argument.
+  // The fail-closed caption, set on the signal-coloured branch — the entire argument.
   const captionY = (STEM_Y + indeterminateMidY) / 2 + 8;
   parts.push(
     `<rect x="${FORK_X + 6}" y="${captionY - 15}" width="280" height="20" fill="${PAPER}"/>`
@@ -158,7 +163,7 @@ function main() {
     "A directed diagram. One box, in_flight, has three outgoing arrows, drawn as a single stem that forks into three branches. " +
     "The first branch leads to succeeded: the effect ran and its result was durably recorded, so every future caller replays that result instead of running the effect again. " +
     "The second branch leads to failed: the effect provably did not happen, so it is safe to know the outcome and act on it. " +
-    "The third branch, drawn in amber because it is the only one that matters for this argument, leads to indeterminate: sluice could not determine whether the effect happened, for example a timeout after the call was sent, or a crash after the effect ran but before its result was persisted. " +
+    "The third branch, drawn in the signal colour because it is the only one that matters for this argument, leads to indeterminate: sluice could not determine whether the effect happened, for example a timeout after the call was sent, or a crash after the effect ran but before its result was persisted. " +
     "Unlike the other two branches, indeterminate has no automatic path back to in_flight. By default sluice fails closed: the effect is parked as indeterminate and never silently retried. " +
     "Leaving that state requires an explicit reclaim call, where the caller has declared the downstream operation safe to repeat, or a human decision recorded through an approval gate. " +
     "Retries happen inside in_flight, under a single lease, before any terminal state is reached — they never turn a failed or indeterminate outcome into a fresh attempt.";

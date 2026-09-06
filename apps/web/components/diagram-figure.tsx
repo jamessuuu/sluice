@@ -18,7 +18,7 @@ export function DiagramFigure() {
   const svg = readFileSync(join(process.cwd(), "public", "diagram", "states.svg"), "utf8");
   return (
     <div
-      className="border border-rule bg-paper [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
+      className="raised border border-edge-lo [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
       // Trusted, build-time-only content: scripts/diagram.mjs's own
       // deterministic output, never user input.
       dangerouslySetInnerHTML={{ __html: svg }}

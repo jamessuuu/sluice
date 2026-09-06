@@ -38,8 +38,9 @@ for (const route of ROUTES) {
       "https://github.com/jamessuuu/sluice"
     );
     // The footer's mark stays the maker's chip, never the project glyph —
-    // association (footer), not identity (favicon).
-    await expect(footer.locator('img[src="/brand/mark.svg"]')).toHaveCount(1);
+    // association (footer), not identity (favicon). Since attribution-kit v1 the chip
+    // is an inline SVG with its own accessible name, not an <img>.
+    await expect(footer.locator('svg[aria-label="Agent James"]')).toHaveCount(1);
 
     // The favicon is sluice's own compact glyph (a gate, not the chip) —
     // assert the primary SVG icon link resolves over real HTTP, not just

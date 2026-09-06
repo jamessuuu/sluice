@@ -42,3 +42,15 @@
     color: var(--color-paper);
   }
 }
+
+/* attribution-kit v1 — the maker's mark. In the components layer so the links' Tailwind utilities still win. */
+@layer components {
+  .aj-attribution { margin: 0; font: inherit; line-height: 1.5; color: inherit; }
+  .aj-attribution__mark { display: inline-block; width: 20px; height: 20px; vertical-align: -0.3em; margin-right: 0.45em; }
+  .aj-attribution__mark--full { width: 48px; height: 48px; vertical-align: middle; }
+  .aj-attribution a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
+  .aj-attribution a:hover { text-decoration-thickness: 2px; }
+  .aj-attribution a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .aj-attribution__sep { margin: 0 0.35em; }
+  .aj-attribution { --aj-attribution-signal: var(--color-amber); }
+}

@@ -121,7 +121,17 @@
 
   /* Fluid scale, 390px -> 1440px, 4px baseline (computed, not eyeballed: see
      README.md "Type scale math" for the slope/intercept per row). */
-  --text-micro: clamp(0.6875rem, 0.6643rem + 0.0952vw, 0.75rem);
+  /* 12px flat, not a clamp down to 11px.
+     DNA section 3.1's scale table said micro was 11px at 390 and 12px at
+     1440, while gate G8 floors every computed font-size at 12px. Those two
+     rules contradicted each other, so the design system failed its own gate
+     at its smallest step -- caught during the first real adoption (sluice),
+     which reported 24 elements computing below 12px at 390px.
+     The gate wins. 11px uppercase mono on a phone is a legibility problem,
+     and G8's floor was written deliberately; the scale table's 11px was an
+     aspiration nobody had checked against it. At 12px against 16-17px body
+     this still reads unambiguously as the micro step. */
+  --text-micro: 0.75rem;
   --text-label: clamp(0.75rem, 0.7268rem + 0.0952vw, 0.8125rem);
   --text-body-s: clamp(0.875rem, 0.8518rem + 0.0952vw, 0.9375rem);
   --text-body: clamp(1rem, 0.9768rem + 0.0952vw, 1.0625rem);
@@ -194,6 +204,7 @@
 }
 
 /* ---- DUSK ------------------------------------------------------------------------ */
+:root,
 [data-lighting="dusk"] {
   color-scheme: dark;
   --sub-0: oklch(0.145 0.014 258);
@@ -369,4 +380,147 @@ body {
 code, pre, kbd, samp {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
+}
+
+
+/* ================================================ 12. PRODUCT SURFACE ============
+ * Added 2026-09-07, after James's judgment on the shipped portfolio: "the current
+ * projects you are developing are low quality in terms of UI ... we want it to
+ * actually look real."
+ *
+ * He is right, and the cause was in this file rather than in any project. The
+ * spine specified a measured-instrument aesthetic: every panel a 0px-radius
+ * rectangle, depth reduced to a single 1px inset hairline, "no blur, no glow",
+ * and cream as the default lighting. Applied faithfully across 26 projects, that
+ * produces 26 documents. It reads as a rendered README because, structurally,
+ * that is what it was.
+ *
+ * What changes here is presentation only: no token is renamed, no project markup
+ * moves, and every rule below composes existing tokens. The instrument look
+ * remains reachable through [data-surface="flat"] for the pages where a flat
+ * plate genuinely is correct (tables, audit output, specimens).
+ */
+
+:root {
+  /* Real corners. 0px was the single loudest "unfinished" tell: no shipped
+     product renders every panel as a sharp rectangle. Tables and full-bleed
+     bands keep square edges through --radius-flush. */
+  --radius-structure: 10px;
+  --radius-flush: 0px;
+  --radius-control: 8px;
+
+  /* One easing curve for the whole portfolio, and two durations. Motion was
+     three declarations in 382 lines, which is why nothing on any of these sites
+     responds to being touched. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur-slow: 420ms;
+
+  /* Elevation as a ladder rather than a single hairline. Chroma-bearing, never
+     black, which is the rule the original file already stated and then did not
+     have the tokens to honour. */
+  --elev-1: 0 1px 2px -1px oklch(from var(--shadow-ink) l c h / 12%),
+            0 4px 12px -4px oklch(from var(--shadow-ink) l c h / 14%);
+  --elev-2: 0 2px 4px -2px oklch(from var(--shadow-ink) l c h / 16%),
+            0 12px 32px -8px oklch(from var(--shadow-ink) l c h / 22%);
+  --elev-3: 0 4px 8px -4px oklch(from var(--shadow-ink) l c h / 20%),
+            0 24px 64px -12px oklch(from var(--shadow-ink) l c h / 28%);
+}
+
+/* Depth, rebuilt: value step + edge highlight + contact shadow, which is what
+   section 4 always described. .sub-raised previously emitted only the edge. */
+.sub-raised {
+  border-radius: var(--radius-structure);
+  box-shadow: var(--depth-edge), var(--elev-1);
+}
+.sub-float {
+  border-radius: var(--radius-structure);
+  box-shadow: var(--depth-edge), var(--elev-3);
+}
+
+/* The ambient signal wash. --signal-glow has existed in both lighting blocks
+   since the beginning and was never once referenced; this is what it was for.
+   A single radial bloom behind a hero, tinted by the project's own hue, is what
+   separates a product page from a document. */
+.sub-ambient {
+  position: relative;
+  isolation: isolate;
+}
+.sub-ambient::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -20% -10% auto -10%;
+  height: 130%;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 55% at 18% 0%, oklch(from var(--signal-glow) l c h / 22%), transparent 70%),
+    radial-gradient(45% 45% at 88% 12%, oklch(from var(--info-glow) l c h / 14%), transparent 72%);
+}
+
+/* Grain. Flat digital gradients band and read as cheap; a little luminance noise
+   is what makes a dark surface look like a material. */
+.sub-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+/* A hairline that catches light along its top edge, the way a real bevel does. */
+.sub-panel {
+  position: relative;
+  border-radius: var(--radius-structure);
+  background-color: var(--sub-1);
+  box-shadow: var(--depth-edge), var(--elev-1);
+  transition: box-shadow var(--dur-slow) var(--ease-out),
+              transform var(--dur-slow) var(--ease-out);
+}
+.sub-panel:hover {
+  box-shadow: var(--depth-edge), var(--elev-2);
+  transform: translateY(-2px);
+}
+
+/* Controls respond. Every button on every one of these sites currently changes
+   one background colour and nothing else. */
+.sub-control,
+button,
+[role="button"] {
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+
+/* Entrance. Content arriving with intent is most of what "designed" feels like. */
+@keyframes sub-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.sub-rise {
+  animation: sub-rise var(--dur-slow) var(--ease-out) both;
+}
+.sub-rise-2 { animation-delay: 80ms; }
+.sub-rise-3 { animation-delay: 160ms; }
+.sub-rise-4 { animation-delay: 240ms; }
+
+/* Opt back into the instrument look where a flat plate is genuinely right. */
+[data-surface="flat"] .sub-raised,
+[data-surface="flat"] .sub-panel {
+  border-radius: var(--radius-flush);
+  box-shadow: var(--depth-edge);
+}
+
+/* Motion is decoration here, so it goes away entirely when asked. */
+@media (prefers-reduced-motion: reduce) {
+  .sub-rise { animation: none; }
+  .sub-panel,
+  .sub-control,
+  button,
+  [role="button"] { transition: none; }
+  .sub-panel:hover { transform: none; }
 }

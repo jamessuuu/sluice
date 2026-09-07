@@ -186,10 +186,48 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* --- Depth (DNA §3.3): value step, then the edge highlight. No blur, no glow. */
+  /* --- Depth (DNA §3.3): value step, edge highlight, then contact shadow.
+     The "no blur, no glow" rule produced 26 sites that read as rendered
+     READMEs, so substrate section 12 now supplies a real elevation ladder.
+     These stay var() pointers, so gate G1 (no colour literals here) holds. */
   .raised {
     background-color: var(--sub-2);
-    box-shadow: var(--depth-edge);
+    border-radius: var(--radius-structure);
+    box-shadow: var(--depth-edge), var(--elev-1);
+    transition:
+      box-shadow var(--dur-slow) var(--ease-out),
+      transform var(--dur-slow) var(--ease-out);
+  }
+  .raised:hover {
+    box-shadow: var(--depth-edge), var(--elev-2);
+    transform: translateY(-2px);
+  }
+
+  /* The hero carries the ambient signal wash. --signal-glow shipped in both
+     lighting blocks from day one and had never been referenced by anything. */
+  .band[data-hero] {
+    position: relative;
+    isolation: isolate;
+  }
+  .band[data-hero]::before {
+    content: "";
+    position: absolute;
+    inset: -30% -10% auto -10%;
+    height: 160%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(58% 52% at 16% 0%, oklch(from var(--signal-glow) l c h / 20%), transparent 70%),
+      radial-gradient(42% 42% at 86% 8%, oklch(from var(--info-glow) l c h / 12%), transparent 72%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .raised {
+      transition: none;
+    }
+    .raised:hover {
+      transform: none;
+    }
   }
   /* The construction tell (DNA §3.4): one 12px cut corner, on the hero instrument
      frame only. identity.json says which corner — sluice's is `tr`. */

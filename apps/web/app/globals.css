@@ -208,6 +208,15 @@
   .band[data-hero] {
     position: relative;
     isolation: isolate;
+    /* The wash below is inset -10% on both sides so it bleeds off the edge
+       instead of ending in a visible seam. Nothing clipped that bleed, so the
+       10% overhang past the RIGHT edge became document overflow: 1584 vs 1440
+       on a laptop, 429 vs 390 on a phone — exactly 10%, on both hero bands.
+       `overflow-x: clip` (not `hidden`) is the one that leaves overflow-y
+       `visible`, so the wash keeps its -30%/160% vertical bleed and only the
+       horizontal overhang, which was never visible anyway, stops widening the
+       page. */
+    overflow-x: clip;
   }
   .band[data-hero]::before {
     content: "";

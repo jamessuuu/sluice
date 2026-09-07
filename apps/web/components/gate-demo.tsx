@@ -24,11 +24,35 @@ export function GateDemo() {
         poster="/demo/sluice-poster.png"
         data-testid="gate-demo-video"
       >
+        {/*
+          H.264/mp4 listed FIRST, on purpose: Safari/WebKit's video-resource-
+          selection step never resolves for this recording's VP8/webm encode
+          (confirmed: it neither plays nor errors — it hangs indefinitely),
+          which keeps document.readyState stuck at "interactive" and
+          window.load never fires, even though the rest of the page is fully
+          rendered. Browsers pick the first <source> whose type they can
+          play, so listing mp4 first makes WebKit resolve immediately while
+          Chromium (which plays either format) is unaffected. See
+          e2e/webkit-video-load.test.mjs for the regression pin.
+        */}
+        <source src="/demo/sluice-demo.mp4" type="video/mp4" />
         <source src="/demo/sluice-demo.webm" type="video/webm" />
       </video>
       <div className="hidden border border-edge-lo motion-reduce:block" data-testid="gate-demo-reduced-motion">
-        {/* A static <img> to the poster PNG, not an optimized remote asset — matches how the video's own poster attribute references the same file. */}
-        <img src="/demo/sluice-poster.png" alt="" className="block w-full" />
+        {/* A static image element pointing at the poster PNG, not an optimized remote asset — matches how the video's own poster attribute references the same file.
+            This is the ONLY thing a reduced-motion visitor sees of the demo, so
+            it carries real alt text: alt="" would have hidden the entire
+            demonstration from a screen reader (WCAG 1.1.1, Level A). The file
+            itself used to be a screenshot of this very landing page, which
+            showed none of what the caption below promises; it is now a real
+            frame of the recording at the moment the gate resolves. */}
+        <img
+          src="/demo/sluice-poster.png"
+          width={1120}
+          height={700}
+          alt="The gate walkthrough at the end of the recording: the worker is marked crashed (killed by the browser) with the note that the gate is still here, the &quot;Publish the weekly digest?&quot; gate reads status approved and published — side effect fired 1 time, and the audit trail below lists gate.opened, gate.decided, gate.claimed, effect.claimed, effect.succeeded and gate.resumed."
+          className="block w-full"
+        />
         <p className="t-body-s px-5 py-3 text-ink-2">
           Your browser is set to reduce motion, so the recording is not playing automatically.{" "}
           <a

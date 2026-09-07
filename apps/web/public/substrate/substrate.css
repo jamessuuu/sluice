@@ -27,6 +27,24 @@
 
 /* ============================================================ 1. FONTS ============ */
 
+/* !! VENDOR THE fonts/ DIRECTORY WITH THIS FILE !!
+ *
+ * The eight @font-face rules below load from relative "./fonts/" paths. A
+ * project that copies substrate.css WITHOUT copying the sibling fonts/
+ * directory ships eight 404s and silently falls back to a system face, which
+ * is both a broken request and a different typeface than the one every other
+ * project in the family uses.
+ *
+ * This already happened once, on 2026-09-07: a 404 reached production and was
+ * caught by a deploy-time check rather than by any local test, because a
+ * missing webfont does not fail a build.
+ *
+ * Two legitimate options, and no third:
+ *   1. copy fonts/ alongside this file (what sluice does), or
+ *   2. delete these @font-face rules and set the --font-* tokens to faces you
+ *      actually serve (what stackup does).
+ * Leaving the rules in place without the files is the only wrong answer.
+ */
 @font-face {
   font-family: "Archivo";
   src: url("./fonts/archivo-variable.woff2") format("woff2-variations"), url("./fonts/archivo-variable.woff2") format("woff2");
@@ -445,6 +463,14 @@ code, pre, kbd, samp {
 .sub-ambient {
   position: relative;
   isolation: isolate;
+  /* The wash below is inset -10% on each side, so without this it makes the
+     document 20% wider than the viewport. That shipped: sluice measured a
+     scrollWidth of 429 in a 390 viewport from exactly this rule, and the
+     gate caught it only on the phone.
+
+     Use clip, never hidden. hidden would also cut the wash's vertical bleed,
+     which is the part doing the work; clipping one axis leaves the other free. */
+  overflow-x: clip;
 }
 .sub-ambient::before {
   content: "";
@@ -523,4 +549,63 @@ button,
   button,
   [role="button"] { transition: none; }
   .sub-panel:hover { transform: none; }
+}
+
+
+/* ============================================== 13. STATUS NOTE ==================
+ * The replacement for the side-tab.
+ *
+ * A thick coloured bar down one edge of a card is the most recognisable tell of
+ * generated UI, and on 2026-09-07 it was found and removed SIX times across five
+ * projects, in work produced AFTER a brief that banned it by name. Banning a
+ * pattern does not work if nothing fills the need; an author who wants to say
+ * "this block is set apart and carries a status" will reach for the nearest
+ * thing to hand.
+ *
+ * So this is the nearest thing to hand. It says the same sentence with a tinted
+ * ground, a full border in the status hue, and one lit dot, which reads as
+ * material rather than as a tab.
+ *
+ *   <p class="sub-note" data-status="warn">...</p>
+ *
+ * data-status: none (default) | ok | warn | fail | info | signal
+ */
+
+.sub-note {
+  --note-hue: var(--edge-hi);
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--note-hue) 34%, var(--edge-lo));
+  border-radius: var(--radius-structure);
+  background: color-mix(in oklab, var(--note-hue) 8%, var(--sub-1));
+  padding: var(--space-3) var(--space-4);
+  padding-inline-start: calc(var(--space-4) + var(--space-4));
+}
+
+/* One lit dot, aligned to the first line, doing the job the bar used to do. */
+.sub-note::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: var(--space-4);
+  inset-block-start: calc(var(--space-3) + 0.55em);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--note-hue);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--note-hue) 18%, transparent);
+}
+
+.sub-note[data-status="ok"] { --note-hue: var(--ok); }
+.sub-note[data-status="warn"] { --note-hue: var(--warn); }
+.sub-note[data-status="fail"] { --note-hue: var(--fail); }
+.sub-note[data-status="info"] { --note-hue: var(--info); }
+.sub-note[data-status="signal"] { --note-hue: var(--signal); }
+
+/* A quote or disclosure gutter is NOT the same pattern and stays allowed: it is
+ * neutral, it is a typographic convention centuries older than the web, and a
+ * reader does not decode it as a status. The tell is a COLOUR-CODED bar.
+ */
+.sub-quote {
+  border-inline-start: 2px solid var(--edge-lo);
+  padding-inline-start: var(--space-4);
+  color: var(--ink-2);
 }

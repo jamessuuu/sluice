@@ -72,18 +72,21 @@ export function Attribution({
       <span className="aj-attribution__sep" aria-hidden="true">
         &middot;
       </span>
+      <wbr />
       <a href={ATTRIBUTION.linkedin} rel="me" className={linkClassName}>
         LinkedIn
       </a>
       <span className="aj-attribution__sep" aria-hidden="true">
         &middot;
       </span>
+      <wbr />
       <a href={ATTRIBUTION.onlinejobs} rel="me" className={linkClassName}>
         OnlineJobs.ph
       </a>
       <span className="aj-attribution__sep" aria-hidden="true">
         &middot;
       </span>
+      <wbr />
       <a href={ATTRIBUTION.jobstreet} rel="me" className={linkClassName}>
         JobStreet
       </a>

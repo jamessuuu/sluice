@@ -5,6 +5,28 @@ import { SiteNav } from "@/components/site-nav";
 import { SubstrateSprite } from "@/components/substrate-sprite";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/site";
 
+// Register R15/R17: the site declares its author as the Person entity agentjames
+// publishes (same @id), so engines can join the project sites to one entity.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "sluice",
+  url: "https://sluice-iota.vercel.app",
+  description: SITE_DESCRIPTION,
+  author: {
+    "@type": "Person",
+    "@id": "https://agentjames.vercel.app/#person",
+    name: "James Lorenz Santos",
+    url: "https://agentjames.vercel.app",
+    sameAs: [
+      "https://www.linkedin.com/in/james-lorenz-santos-720776251/",
+      "https://github.com/jamessuuu",
+      "https://www.onlinejobs.ph/jobseekers/info/2766463",
+      "https://ph.jobstreet.com/profiles/jameslorenz-santos-SXdpKyGqdK",
+    ],
+  },
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://sluice-iota.vercel.app"),
   title: { default: SITE_TITLE, template: "%s · sluice" },
@@ -58,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="/substrate/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/substrate/fonts/commit-mono-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="stylesheet" href="/substrate/substrate.css" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
       <body className="flex min-h-screen flex-col antialiased">
         <a className="sub-skip-link" href="#main">

@@ -5,12 +5,19 @@
  * Needs the six rules in attribution.css in the project's stylesheet. The mark draws in `currentColor` and takes
  * its amber from `--aj-attribution-signal` (#B45309 on light ground, #F59E0B on dark). The block is inline text on
  * purpose: the links stay display:inline (the WCAG 2.5.8 inline-text exemption), so do not turn it into a flex row.
+ *
+ * Register R15/R17 (agentjames/docs/RENOVATION-BRIEF.md): the maker line names the portfolio with rel="author me"
+ * and LinkedIn, OnlineJobs.ph and JobStreet with rel="me", the same Person the site's JSON-LD declares. This copy
+ * runs ahead of the kit on that one line; re-copy the kit once it carries the same.
  */
 
 export const ATTRIBUTION = {
   name: "James Lorenz Santos",
+  role: "agentic engineer",
   portfolio: "https://agentjames.vercel.app",
   linkedin: "https://www.linkedin.com/in/james-lorenz-santos-720776251/",
+  onlinejobs: "https://www.onlinejobs.ph/jobseekers/info/2766463",
+  jobstreet: "https://ph.jobstreet.com/profiles/jameslorenz-santos-SXdpKyGqdK",
 } as const;
 
 /** The Agent James chip mark. Two drawings of one identity: below 40px the mark-16 drawing, at 40px and up the full one. */
@@ -58,14 +65,27 @@ export function Attribution({
     <p className={rootCls}>
       <AgentJamesMark size={size} />
       Built by{" "}
-      <a href={ATTRIBUTION.portfolio} rel="me noopener" className={linkClassName}>
+      <a href={ATTRIBUTION.portfolio} rel="author me" className={linkClassName}>
         {ATTRIBUTION.name}
+      </a>
+      , {ATTRIBUTION.role}
+      <span className="aj-attribution__sep" aria-hidden="true">
+        &middot;
+      </span>
+      <a href={ATTRIBUTION.linkedin} rel="me" className={linkClassName}>
+        LinkedIn
       </a>
       <span className="aj-attribution__sep" aria-hidden="true">
         &middot;
       </span>
-      <a href={ATTRIBUTION.linkedin} rel="me noopener" target="_blank" className={linkClassName}>
-        LinkedIn
+      <a href={ATTRIBUTION.onlinejobs} rel="me" className={linkClassName}>
+        OnlineJobs.ph
+      </a>
+      <span className="aj-attribution__sep" aria-hidden="true">
+        &middot;
+      </span>
+      <a href={ATTRIBUTION.jobstreet} rel="me" className={linkClassName}>
+        JobStreet
       </a>
     </p>
   );

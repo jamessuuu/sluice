@@ -18,6 +18,10 @@ export default tseslint.config(
             "scripts/*.mjs",
             "apps/*/*.mjs",
             "apps/*/scripts/*.mjs",
+            // apps/web/e2e/webkit-video-load.test.mjs (2026-09-06) sat outside
+            // every glob above, so `pnpm lint` failed on a parsing error
+            // before it linted anything. Same treatment as the other .mjs.
+            "apps/*/e2e/*.mjs",
             "apps/*/playwright.config.ts",
             "packages/*/bin/*.mjs",
           ],
@@ -98,6 +102,17 @@ export default tseslint.config(
         process: "readonly",
         URL: "readonly",
         fetch: "readonly",
+      },
+    },
+  },
+  {
+    // Playwright e2e written as .mjs: page.evaluate callbacks run in the
+    // browser, where document and window are real.
+    files: ["apps/*/e2e/*.mjs"],
+    languageOptions: {
+      globals: {
+        document: "readonly",
+        window: "readonly",
       },
     },
   }
